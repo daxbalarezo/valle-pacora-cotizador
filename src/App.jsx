@@ -7,7 +7,6 @@ import Clients from './pages/Clients';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
 import PublicView from './pages/PublicView';
-import ShareModal from './components/proforma/ShareModal';
 import { downloadProformaPdf } from './utils/pdfGenerator';
 import { generateToken } from './utils/formatters';
 
@@ -22,8 +21,6 @@ export default function App() {
   const [publicToken, setPublicToken] = useState(null);
   const [properties, setProperties] = useState(() => storageService.getProperties());
   const [loading, setLoading] = useState(false);
-  const [isDirectShareOpen, setIsDirectShareOpen] = useState(false);
-  const [showAestheticBar, setShowAestheticBar] = useState(true);
 
   // Detectar si la URL es /p/:token
   useEffect(() => {
@@ -392,27 +389,6 @@ export default function App() {
     setConfig(storageService.getConfigSync());
   };
 
-  // Función para cambiar rápidamente de pantalla para validar la estética
-  const switchAestheticView = (viewName) => {
-    if (viewName === 'dashboard') {
-      setCurrentView('dashboard');
-    } else if (viewName === 'clients') {
-      setCurrentView('clients');
-    } else if (viewName === 'templates') {
-      setCurrentView('templates');
-    } else if (viewName === 'settings') {
-      setCurrentView('settings');
-    } else if (viewName === 'editor') {
-      setSelectedProforma(defaultHardcodedProforma);
-      setCurrentView('edit');
-    } else if (viewName === 'public') {
-      setPublicToken('cot-1044-janet');
-      setCurrentView('public');
-    } else if (viewName === 'modal') {
-      setIsDirectShareOpen(true);
-    }
-  };
-
   return (
     <div className="relative min-h-screen">
       {/* Vista Principal según estado */}
@@ -504,111 +480,6 @@ export default function App() {
           token={publicToken || 'cot-1044-janet'} 
           onDownloadPdf={handleDownloadPdf} 
         />
-      )}
-
-      {/* Modal de Compartir directo para validación estética */}
-      <ShareModal
-        isOpen={isDirectShareOpen}
-        onClose={() => setIsDirectShareOpen(false)}
-        proforma={defaultHardcodedProforma}
-        onDownloadPdf={handleDownloadPdf}
-      />
-
-      {/* BARRA FLOTANTE DE VALIDACIÓN ESTÉTICA (1-CLIC) */}
-      {showAestheticBar && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-900 text-white backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-2xl border border-slate-700 text-xs transition-all">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1 pr-2 border-r border-slate-700 hidden sm:inline">
-            Modo Validación:
-          </span>
-
-          <button
-            type="button"
-            onClick={() => switchAestheticView('dashboard')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
-              currentView === 'dashboard' ? 'bg-[#0e692e] text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            📊 Dashboard
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchAestheticView('clients')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
-              currentView === 'clients' ? 'bg-[#0e692e] text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            👥 Clientes
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchAestheticView('templates')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
-              currentView === 'templates' ? 'bg-[#0e692e] text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            🌾 Plantillas
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchAestheticView('settings')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
-              currentView === 'settings' ? 'bg-[#0e692e] text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            ⚙️ Configuración
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchAestheticView('editor')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
-              (currentView === 'create' || currentView === 'edit') ? 'bg-[#0e692e] text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            📝 Editor Split A4
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchAestheticView('modal')}
-            className="px-3 py-1.5 rounded-xl font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            📱 Modal Compartir
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchAestheticView('public')}
-            className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
-              currentView === 'public' ? 'bg-[#0e692e] text-white' : 'text-slate-300 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            🌐 Vista Cliente
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowAestheticBar(false)}
-            title="Ocultar barra"
-            className="ml-1 text-slate-500 hover:text-slate-300 p-1 rounded-lg hover:bg-slate-800"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Botón flotante si se minimizó la barra */}
-      {!showAestheticBar && (
-        <button
-          type="button"
-          onClick={() => setShowAestheticBar(true)}
-          className="fixed bottom-4 right-4 z-50 bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-lg border border-slate-700 hover:bg-slate-800 transition-all flex items-center gap-1.5"
-        >
-          <span>👁️ Validar Estética</span>
-        </button>
       )}
     </div>
   );
