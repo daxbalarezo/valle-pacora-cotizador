@@ -13,7 +13,39 @@ export default function ShareModal({
 
   if (!isOpen || !proforma) return null;
 
-  const publicUrl = `${window.location.origin}/p/${proforma.publicToken || proforma.code.replace('#', '').toLowerCase()}`;
+  const buildShareUrl = () => {
+    const token = proforma.publicToken || proforma.code.replace('#', '').toLowerCase();
+    const base = `${window.location.origin}/p/${token}`;
+    try {
+      const compactData = {
+        id: proforma.id,
+        code: proforma.code,
+        publicToken: proforma.publicToken || token,
+        createdAt: proforma.createdAt,
+        advisorName: proforma.advisorName,
+        advisorPhone: proforma.advisorPhone,
+        client: proforma.client,
+        selectedPropertyId: proforma.selectedPropertyId,
+        currency: proforma.currency,
+        customPrice: proforma.customPrice,
+        initialPaymentPct: proforma.initialPaymentPct,
+        initialPaymentAmount: proforma.initialPaymentAmount,
+        months: proforma.months,
+        monthlyQuota: proforma.monthlyQuota,
+        total: proforma.total,
+        discount: proforma.discount,
+        paymentSchedule: proforma.paymentSchedule,
+        notes: proforma.notes,
+        status: proforma.status
+      };
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(compactData))));
+      return `${base}?d=${encoded}`;
+    } catch {
+      return base;
+    }
+  };
+
+  const publicUrl = buildShareUrl();
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(publicUrl);

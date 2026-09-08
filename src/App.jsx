@@ -26,7 +26,7 @@ export default function App() {
   useEffect(() => {
     const path = window.location.pathname;
     if (path.startsWith('/p/')) {
-      const token = path.replace('/p/', '');
+      const token = path.replace(/^\/p\//, '').replace(/\/+$/, '');
       if (token) {
         setPublicToken(token);
         setCurrentView('public');

@@ -11,8 +11,10 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.resolve(__dirname, '../data');
+const isVercel = Boolean(process.env.VERCEL);
+const DATA_DIR = isVercel ? '/tmp' : path.resolve(__dirname, '../data');
 const DB_FILE = path.join(DATA_DIR, 'valle_pacora_db.json');
+const BUNDLED_DB_FILE = path.resolve(__dirname, '../data/valle_pacora_db.json');
 
 class Database {
   constructor() {
@@ -30,17 +32,25 @@ class Database {
       if (fileExists) {
         const raw = await fs.readFile(DB_FILE, 'utf-8');
         this.data = JSON.parse(raw);
-        console.log('[Database] Base de datos cargada exitosamente desde disco.');
+        console.log('[Database] Base de datos cargada desde:', DB_FILE);
       } else {
-        this.data = {
-          properties: SEED_PROPERTIES,
-          proformas: SEED_PROFORMAS,
-          clients: SEED_CLIENTS,
-          templates: SEED_TEMPLATES,
-          config: SEED_CONFIG
-        };
+        // Intentar leer de archivo empaquetado si existe
+        let baseData = null;
+        try {
+          const bundledRaw = await fs.readFile(BUNDLED_DB_FILE, 'utf-8');
+          baseData = JSON.parse(bundledRaw);
+        } catch {
+          baseData = {
+            properties: SEED_PROPERTIES,
+            proformas: SEED_PROFORMAS,
+            clients: SEED_CLIENTS,
+            templates: SEED_TEMPLATES,
+            config: SEED_CONFIG
+          };
+        }
+        this.data = baseData;
         await this.persist();
-        console.log('[Database] Base de datos inicializada con semilla oficial de Valle Pacora.');
+        console.log('[Database] Base de datos inicializada en:', DB_FILE);
       }
       this.initialized = true;
     } catch (err) {

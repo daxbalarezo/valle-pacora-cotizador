@@ -267,6 +267,79 @@ const CONFIG_STORAGE_KEY = 'valle_pacora_settings_config_v2';
 
 export const storageService = {
   // Inicializar o cargar desde localStorage
+  getDeletedProformaIds() {
+    try {
+      const stored = localStorage.getItem('valle_pacora_deleted_proformas');
+      const list = stored ? JSON.parse(stored) : [];
+      return new Set(list);
+    } catch {
+      return new Set();
+    }
+  },
+
+  markProformaAsDeleted(id) {
+    if (!id) return;
+    try {
+      const set = this.getDeletedProformaIds();
+      set.add(String(id));
+      localStorage.setItem('valle_pacora_deleted_proformas', JSON.stringify(Array.from(set)));
+    } catch {}
+  },
+
+  unmarkProformaAsDeleted(id) {
+    if (!id) return;
+    try {
+      const set = this.getDeletedProformaIds();
+      set.delete(String(id));
+      localStorage.setItem('valle_pacora_deleted_proformas', JSON.stringify(Array.from(set)));
+    } catch {}
+  },
+
+  mergeProformasLists(localList = [], serverList = []) {
+    const deletedIds = this.getDeletedProformaIds();
+    const map = new Map();
+
+    // 1. Agregar proformas del servidor no eliminadas
+    (serverList || []).forEach(p => {
+      if (p && (p.id || p.code)) {
+        const idKey = String(p.id || '');
+        const codeKey = String(p.code || '');
+        if (!deletedIds.has(idKey) && !deletedIds.has(codeKey)) {
+          map.set(idKey || codeKey, p);
+        }
+      }
+    });
+
+    // 2. Fusionar con las proformas locales (lo creado localmente nunca se borra)
+    (localList || []).forEach(p => {
+      if (p && (p.id || p.code)) {
+        const idKey = String(p.id || '');
+        const codeKey = String(p.code || '');
+        if (!deletedIds.has(idKey) && !deletedIds.has(codeKey)) {
+          const key = idKey || codeKey;
+          const existing = map.get(key);
+          if (!existing) {
+            map.set(key, p);
+          } else {
+            const timeLocal = new Date(p.updatedAt || p.createdAt || 0).getTime();
+            const timeServer = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+            if (timeLocal >= timeServer) {
+              map.set(key, p);
+            }
+          }
+        }
+      }
+    });
+
+    const result = Array.from(map.values());
+    result.sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+      return timeB - timeA;
+    });
+    return result;
+  },
+
   getProformasSync() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -282,6 +355,8 @@ export const storageService = {
   },
 
   async getProformas() {
+    const localList = this.getProformasSync();
+
     // 1. Intentar Firebase Firestore en tiempo real si está activo
     if (isFirebaseConfigured && db) {
       try {
@@ -296,38 +371,28 @@ export const storageService = {
           };
         });
 
-        // Ordenar en memoria por fecha descendente
-        list.sort((a, b) => {
-          const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
-          const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
-          return timeB - timeA;
-        });
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-        return list;
+        const merged = this.mergeProformasLists(localList, list);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        return merged;
       } catch (err) {
         console.warn('[Firebase] Error leyendo proformas de Firestore:', err.message);
       }
     }
 
-    // 2. Intentar backend API como respaldo
+    // 2. Intentar backend API como respaldo (Fusión Inteligente: nunca sobreescribe datos locales)
     try {
       const serverList = await api.getProformas();
-      if (Array.isArray(serverList)) {
-        serverList.sort((a, b) => {
-          const timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
-          const timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
-          return timeB - timeA;
-        });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(serverList));
-        return serverList;
+      if (Array.isArray(serverList) && serverList.length > 0) {
+        const merged = this.mergeProformasLists(localList, serverList);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        return merged;
       }
     } catch (err) {
       console.warn('[Storage] API backend no disponible, usando caché local:', err.message);
     }
 
     // 3. Fallback a caché local
-    return this.getProformasSync();
+    return localList;
   },
 
   async getProformaById(id) {
@@ -354,6 +419,28 @@ export const storageService = {
   async getProformaByToken(token) {
     const cleanToken = token.replace('#', '').toLowerCase();
 
+    // 1. Verificar si en la URL hay datos codificados directamente
+    if (typeof window !== 'undefined' && window.location) {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const encoded = params.get('d');
+        if (encoded) {
+          const decoded = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+          if (decoded && (decoded.publicToken === token || decoded.code?.replace('#', '').toLowerCase() === cleanToken || decoded.id === token)) {
+            // Guardar en caché local para que persista
+            this.saveProforma(decoded).catch(() => {});
+            return decoded;
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Buscar en caché local de inmediato
+    const list = this.getProformasSync();
+    const localFound = list.find(p => p.publicToken === token || p.id === token || p.code?.replace('#', '').toLowerCase() === cleanToken);
+    if (localFound) return localFound;
+
+    // 3. Buscar en Firebase Firestore
     if (isFirebaseConfigured && db) {
       try {
         const q = query(collection(db, 'proformas'), where('publicToken', '==', token));
@@ -367,13 +454,13 @@ export const storageService = {
       }
     }
 
+    // 4. Buscar en Backend API
     try {
       const item = await api.getProformaByToken(token);
       if (item) return item;
     } catch (err) {}
 
-    const list = this.getProformasSync();
-    return list.find(p => p.publicToken === token || p.id === token || p.code?.replace('#', '').toLowerCase() === cleanToken) || null;
+    return null;
   },
 
   async saveProforma(proforma) {
@@ -398,6 +485,12 @@ export const storageService = {
       publicToken: proforma.publicToken || generateToken()
     };
 
+    // Asegurar que no esté en la lista de eliminados
+    this.unmarkProformaAsDeleted(proformaWithDefaults.id);
+    if (proformaWithDefaults.code) {
+      this.unmarkProformaAsDeleted(proformaWithDefaults.code);
+    }
+
     let updatedList;
     if (existingIndex >= 0) {
       updatedList = [...list];
@@ -412,7 +505,7 @@ export const storageService = {
       console.error('Error writing to localStorage:', e);
     }
 
-    // Persistir directamente en Firebase Firestore
+    // Persistir directamente en Firebase Firestore si está activo
     if (isFirebaseConfigured && db) {
       try {
         await setDoc(doc(db, 'proformas', proformaWithDefaults.id), proformaWithDefaults, { merge: true });
@@ -420,6 +513,17 @@ export const storageService = {
       } catch (err) {
         console.warn('[Firebase] Error guardando proforma en Firestore:', err.message);
       }
+    }
+
+    // Sincronizar con API backend
+    try {
+      if (existingIndex >= 0) {
+        await api.updateProforma(proformaWithDefaults.id, proformaWithDefaults);
+      } else {
+        await api.createProforma(proformaWithDefaults);
+      }
+    } catch (err) {
+      console.warn('[Storage] Error sincronizando proforma con backend:', err.message);
     }
 
     // Auto-sincronizar el cliente en el Directorio de Clientes (cero doble trabajo)
@@ -435,7 +539,13 @@ export const storageService = {
   },
 
   async deleteProforma(id) {
+    this.markProformaAsDeleted(id);
     const list = this.getProformasSync();
+    const item = list.find(p => p.id === id || p.code === id);
+    if (item?.code) {
+      this.markProformaAsDeleted(item.code);
+    }
+
     const updated = list.filter(p => p.id !== id && p.code !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
 
