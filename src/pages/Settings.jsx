@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/layout/Sidebar';
 import { 
   Building2, 
@@ -43,27 +43,34 @@ export default function Settings({
   const [activeTab, setActiveTab] = useState('company'); // 'company' | 'banks' | 'commercial' | 'advisor' | 'whatsapp'
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [advisorSaveSuccess, setAdvisorSaveSuccess] = useState(false);
+  const hasInitialized = useRef(false);
 
-  // Sincronizar formData cuando el prop config o advisors cambie
+  // Inicializar formData una sola vez sin sobreescribir lo que el usuario esté escribiendo
   useEffect(() => {
-    if (advisors && advisors.length > 0) {
-      const cleaned = advisors.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
-      setFormData(prev => ({
-        ...prev,
-        advisors: cleaned,
-        advisor: cleaned.find(a => a.isDefault) || cleaned[0] || prev.advisor
-      }));
-    } else if (config && Object.keys(config).length > 0) {
-      setFormData(prev => {
-        const next = { ...prev, ...config };
-        let advs = Array.isArray(next.advisors) ? next.advisors : [];
-        advs = advs.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
-        if (advs.length === 0) {
-          advs = storageService.getAdvisorsSync();
+    if (!hasInitialized.current) {
+      if (advisors && advisors.length > 0) {
+        const cleaned = advisors.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
+        if (cleaned.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            advisors: cleaned,
+            advisor: cleaned.find(a => a.isDefault) || cleaned[0] || prev.advisor
+          }));
+          hasInitialized.current = true;
         }
-        next.advisors = advs;
-        return next;
-      });
+      } else if (config && Object.keys(config).length > 0) {
+        setFormData(prev => {
+          const next = { ...prev, ...config };
+          let advs = Array.isArray(next.advisors) ? next.advisors : [];
+          advs = advs.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
+          if (advs.length === 0) {
+            advs = storageService.getAdvisorsSync();
+          }
+          next.advisors = advs;
+          return next;
+        });
+        hasInitialized.current = true;
+      }
     }
   }, [config, advisors]);
 
@@ -73,38 +80,6 @@ export default function Settings({
       ...formData,
       company: { ...formData.company, [field]: value }
     });
-  };
-
-  const persistAdvisorChanges = async (updatedAdvisors, updatedPrimary) => {
-    const updated = {
-      ...formData,
-      advisors: updatedAdvisors,
-      ...(updatedPrimary ? { advisor: updatedPrimary } : {})
-    };
-    setFormData(updated);
-
-    // Persistir cada asesor en la colección 'advisors' de Firebase Firestore
-    try {
-      if (Array.isArray(updatedAdvisors)) {
-        for (const adv of updatedAdvisors) {
-          if (adv && adv.name?.trim()) {
-            await storageService.saveAdvisor(adv);
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Error persistiendo asesores en Firestore:', err);
-    }
-
-    if (onSaveConfig) {
-      await onSaveConfig(updated);
-    } else {
-      await storageService.saveConfig(updated);
-    }
-
-    if (onRefreshAdvisors) {
-      onRefreshAdvisors();
-    }
   };
 
   const handleAdvisorFieldChange = (index, field, value) => {
@@ -128,28 +103,33 @@ export default function Settings({
     handleAdvisorFieldChange(index, 'phone', formatted);
   };
 
-  const handleAdvisorFieldBlur = async (index, field, value) => {
+  const handleAdvisorFieldBlur = (index, field, value) => {
     const list = [...(formData.advisors || [])];
     list[index] = { ...list[index], [field]: value };
     const isDef = list[index].isDefault;
     const updatedAdvisor = isDef ? { ...formData.advisor, [field]: value } : formData.advisor;
-    await persistAdvisorChanges(list, updatedAdvisor);
+    setFormData({
+      ...formData,
+      advisors: list,
+      ...(isDef ? { advisor: updatedAdvisor } : {})
+    });
   };
 
-  const handleAddAdvisor = async () => {
+  const handleAddAdvisor = () => {
     const list = formData.advisors || [];
     const newAdvisor = {
       id: `advisor-${Date.now()}`,
       name: '',
       role: 'Asesor Comercial Especializado',
-      phone: '',
+      phone: '+51 ',
       email: '',
-      isDefault: list.length === 0
+      isDefault: list.length === 0,
+      active: true
     };
-    const newList = [...list, newAdvisor];
-    await persistAdvisorChanges(newList);
-    setAdvisorSaveSuccess(true);
-    setTimeout(() => setAdvisorSaveSuccess(false), 2500);
+    setFormData(prev => ({
+      ...prev,
+      advisors: [...(prev.advisors || []), newAdvisor]
+    }));
   };
 
   const handleDeleteAdvisor = async (index) => {
@@ -175,12 +155,28 @@ export default function Settings({
         email: filtered[0].email
       };
     }
-    await persistAdvisorChanges(filtered, primary);
+    const updated = {
+      ...formData,
+      advisors: filtered,
+      ...(primary ? { advisor: primary } : {})
+    };
+    setFormData(updated);
+
+    if (onSaveConfig) {
+      await onSaveConfig(updated);
+    } else {
+      await storageService.saveConfig(updated);
+    }
+
+    if (onRefreshAdvisors) {
+      onRefreshAdvisors();
+    }
+
     setAdvisorSaveSuccess(true);
     setTimeout(() => setAdvisorSaveSuccess(false), 2500);
   };
 
-  const handleSetDefaultAdvisor = async (index) => {
+  const handleSetDefaultAdvisor = (index) => {
     const list = (formData.advisors || []).map((adv, i) => ({
       ...adv,
       isDefault: i === index
@@ -191,13 +187,52 @@ export default function Settings({
       phone: list[index].phone,
       email: list[index].email
     };
-    await persistAdvisorChanges(list, primary);
-    setAdvisorSaveSuccess(true);
-    setTimeout(() => setAdvisorSaveSuccess(false), 2500);
+    setFormData(prev => ({
+      ...prev,
+      advisors: list,
+      advisor: primary
+    }));
   };
 
   const handleSaveAdvisorsTab = async () => {
-    await persistAdvisorChanges(formData.advisors, formData.advisor);
+    const list = formData.advisors || [];
+    const validAdvisors = list.filter(a => a && a.name && a.name.trim());
+    if (validAdvisors.length === 0) {
+      alert('Por favor, ingresa el nombre de al menos un asesor comercial antes de guardar.');
+      return;
+    }
+
+    if (!validAdvisors.some(a => a.isDefault)) {
+      validAdvisors[0].isDefault = true;
+    }
+    const primaryAdvisor = validAdvisors.find(a => a.isDefault) || validAdvisors[0];
+
+    const updated = {
+      ...formData,
+      advisors: validAdvisors,
+      advisor: primaryAdvisor
+    };
+    setFormData(updated);
+
+    // Persistir directamente cada asesor en Firestore
+    try {
+      for (const adv of validAdvisors) {
+        await storageService.saveAdvisor(adv);
+      }
+    } catch (err) {
+      console.warn('[Settings] Error guardando asesores en Firestore:', err);
+    }
+
+    if (onSaveConfig) {
+      await onSaveConfig(updated);
+    } else {
+      await storageService.saveConfig(updated);
+    }
+
+    if (onRefreshAdvisors) {
+      onRefreshAdvisors();
+    }
+
     setAdvisorSaveSuccess(true);
     setTimeout(() => setAdvisorSaveSuccess(false), 3000);
   };
