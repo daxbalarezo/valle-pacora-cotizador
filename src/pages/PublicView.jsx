@@ -352,7 +352,7 @@ export default function PublicView({ token, onDownloadPdf }) {
                   Aceptar y Confirmar Cotización
                 </button>
                 <p className="text-[11px] text-slate-400">
-                  Al aceptar, se notificará inmediatamente a Daniel Balarezo para coordinar la separación de tu parcela agrícola con S/ 1,000.
+                  Al aceptar, se notificará inmediatamente a {proforma.advisorName || 'Daniel Balarezo'} para coordinar la separación de tu parcela agrícola con S/ 1,000.
                 </p>
               </div>
             )}

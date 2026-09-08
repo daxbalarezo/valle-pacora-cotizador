@@ -17,6 +17,7 @@ export default function App() {
   const [clients, setClients] = useState(() => storageService.getClientsSync());
   const [templates, setTemplates] = useState(() => storageService.getTemplatesSync());
   const [config, setConfig] = useState(() => storageService.getConfigSync());
+  const [advisors, setAdvisors] = useState(() => storageService.getAdvisorsSync());
   const [selectedProforma, setSelectedProforma] = useState(null);
   const [publicToken, setPublicToken] = useState(null);
   const [properties, setProperties] = useState(() => storageService.getProperties());
@@ -34,13 +35,15 @@ export default function App() {
     }
   }, []);
 
-  // Cargar proformas, clientes, plantillas, parcelas y configuración
+  // Cargar proformas, clientes, asesores, plantillas, parcelas y configuración
   const refreshData = async () => {
     setLoading(true);
     const list = await storageService.getProformas();
     setProformas(list);
     const clientsList = await storageService.getClients();
     setClients(clientsList);
+    const advisorsList = await storageService.getAdvisors();
+    setAdvisors(advisorsList);
     setTemplates(storageService.getTemplatesSync());
     setProperties(storageService.getProperties());
     setConfig(storageService.getConfigSync());
@@ -53,16 +56,13 @@ export default function App() {
 
   // Handlers
   const handleNewProforma = () => {
-    const currentCfg = storageService.getConfigSync();
-    const advisorsList = (currentCfg?.advisors && currentCfg.advisors.length > 0)
-      ? currentCfg.advisors
-      : (config?.advisors || []);
-    const defaultAdvisor = advisorsList.find(a => a.isDefault) || advisorsList[0] || {
+    const activeAdvisors = (advisors && advisors.length > 0) ? advisors : storageService.getAdvisorsSync();
+    const defaultAdvisor = activeAdvisors.find(a => a.isDefault) || activeAdvisors[0] || {
       id: 'advisor-1',
-      name: user?.name || currentCfg?.advisor?.name || config?.advisor?.name || 'Daniel Balarezo',
-      phone: user?.phone || currentCfg?.advisor?.phone || config?.advisor?.phone || '+51 987 654 321',
-      role: user?.role || currentCfg?.advisor?.role || config?.advisor?.role || 'Asesor Comercial Especializado',
-      email: user?.email || currentCfg?.advisor?.email || config?.advisor?.email || 'daniel.balarezo@vallepacora.pe'
+      name: user?.name || config?.advisor?.name || 'Daniel Balarezo',
+      phone: user?.phone || config?.advisor?.phone || '+51 987 654 321',
+      role: user?.role || config?.advisor?.role || 'Asesor Comercial Especializado',
+      email: user?.email || config?.advisor?.email || 'daniel.balarezo@vallepacora.pe'
     };
 
     const maxCode = (proformas || []).reduce((max, p) => {
@@ -395,6 +395,7 @@ export default function App() {
       {currentView === 'dashboard' && (
         <Dashboard
           proformas={proformas}
+          advisors={advisors}
           onNewProforma={handleNewProforma}
           onEditProforma={handleEditProforma}
           onDuplicateProforma={handleDuplicateProforma}
@@ -451,6 +452,8 @@ export default function App() {
       {currentView === 'settings' && (
         <Settings
           config={config}
+          advisors={advisors}
+          onRefreshAdvisors={refreshData}
           onSaveConfig={handleSaveConfig}
           onNavigateTab={(tab) => {
             if (tab === 'proformas') setCurrentView('dashboard');
@@ -467,7 +470,7 @@ export default function App() {
           proforma={selectedProforma || defaultHardcodedProforma}
           clients={clients}
           templates={templates}
-          advisors={(config?.advisors && config.advisors.length > 0) ? config.advisors : storageService.getConfigSync().advisors}
+          advisors={advisors}
           onSave={handleSaveProforma}
           onBack={() => setCurrentView('dashboard')}
           properties={properties}

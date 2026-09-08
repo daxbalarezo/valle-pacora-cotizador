@@ -44,6 +44,9 @@ export default function ProformaForm({
 
     let list = filterClean(advisors);
     if (list.length === 0) {
+      list = filterClean(storageService.getAdvisorsSync());
+    }
+    if (list.length === 0) {
       const cfg = storageService.getConfigSync();
       list = filterClean(cfg?.advisors);
     }

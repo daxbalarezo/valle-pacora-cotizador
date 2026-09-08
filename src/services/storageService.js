@@ -195,6 +195,20 @@ export const INITIAL_TEMPLATES = [
   }
 ];
 
+export const INITIAL_ADVISORS = [
+  {
+    id: "advisor-1",
+    name: "Daniel Balarezo",
+    role: "Asesor Comercial Especializado",
+    phone: "+51 987 654 321",
+    email: "daniel.balarezo@vallepacora.pe",
+    isDefault: true,
+    active: true,
+    createdAt: "2026-09-01T10:00:00.000Z",
+    updatedAt: "2026-09-01T10:00:00.000Z"
+  }
+];
+
 export const DEFAULT_CONFIG = {
   company: {
     name: "Roble Constructora del Peru SAC",
@@ -242,28 +256,15 @@ export const DEFAULT_CONFIG = {
     separationAmount: 1000,
     defaultNotes: "Forma de pago: S/ 1,000 de separación y 60% de inicial máximo en 15 días.\nTiempo de validez de la proforma 7 días calendarios.\nEntrega de puntos de riego tecnificado y título independizado en Sunarp."
   },
-  advisor: {
-    name: "Daniel Balarezo",
-    role: "Asesor Comercial",
-    phone: "+51 987 654 321",
-    email: "daniel.balarezo@vallepacora.pe"
-  },
-  advisors: [
-    {
-      id: "advisor-1",
-      name: "Daniel Balarezo",
-      role: "Asesor Comercial Especializado",
-      phone: "+51 987 654 321",
-      email: "daniel.balarezo@vallepacora.pe",
-      isDefault: true
-    }
-  ],
+  advisor: INITIAL_ADVISORS[0],
+  advisors: INITIAL_ADVISORS,
   whatsappMessageTemplate: "Hola {cliente}, le saluda {asesor} de Valle Pacora. Le comparto su proforma formal {codigo} por su Parcela Agrícola de {monto}:\n\nPuede revisarla en línea y descargar el PDF oficial aquí:\n{enlace}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación."
 };
 
 export const OFFICIAL_BANK_ACCOUNTS = DEFAULT_CONFIG.bankAccounts;
 
 const CONFIG_STORAGE_KEY = 'valle_pacora_settings_config_v2';
+const ADVISORS_STORAGE_KEY = 'valle_pacora_advisors';
 
 export const storageService = {
   // Inicializar o cargar desde localStorage
@@ -474,8 +475,30 @@ export const storageService = {
       phone: proforma.client.phone ? formatPhoneNumber(proforma.client.phone) : ''
     } : proforma.client;
 
+    // Garantizar que la proforma tenga un asesor asignado válido
+    let advisorData = {
+      advisorId: proforma.advisorId,
+      advisorName: proforma.advisorName,
+      advisorRole: proforma.advisorRole,
+      advisorPhone: proforma.advisorPhone,
+      advisorEmail: proforma.advisorEmail
+    };
+
+    if (!advisorData.advisorName || !advisorData.advisorName.trim()) {
+      const activeAdvisors = this.getAdvisorsSync();
+      const defaultAdv = activeAdvisors.find(a => a.isDefault) || activeAdvisors[0] || INITIAL_ADVISORS[0];
+      advisorData = {
+        advisorId: defaultAdv.id || 'advisor-1',
+        advisorName: defaultAdv.name || 'Daniel Balarezo',
+        advisorRole: defaultAdv.role || 'Asesor Comercial Especializado',
+        advisorPhone: defaultAdv.phone || '+51 987 654 321',
+        advisorEmail: defaultAdv.email || 'daniel.balarezo@vallepacora.pe'
+      };
+    }
+
     const proformaWithDefaults = {
       ...proforma,
+      ...advisorData,
       client: clientNormalized,
       id: proforma.id || `cot-${Date.now()}`,
       code: proforma.code || `#COT-${1001 + list.length}`,
@@ -1114,6 +1137,168 @@ export const storageService = {
     }
 
     return config;
+  },
+
+  // ==========================================
+  // GESTIÓN DE ASESORES (COLECCIÓN 'advisors' EN FIREBASE)
+  // ==========================================
+  getAdvisorsSync() {
+    try {
+      const stored = localStorage.getItem(ADVISORS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
+          return cleaned.length > 0 ? cleaned : INITIAL_ADVISORS;
+        }
+      }
+      const cfg = this.getConfigSync();
+      if (Array.isArray(cfg?.advisors) && cfg.advisors.length > 0) {
+        const cleaned = cfg.advisors.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
+        return cleaned.length > 0 ? cleaned : INITIAL_ADVISORS;
+      }
+      return INITIAL_ADVISORS;
+    } catch {
+      return INITIAL_ADVISORS;
+    }
+  },
+
+  async getAdvisors() {
+    const localList = this.getAdvisorsSync();
+
+    // 1. Intentar leer desde Firebase Firestore en la colección 'advisors'
+    if (isFirebaseConfigured && db) {
+      try {
+        const snap = await getDocs(collection(db, 'advisors'));
+        if (!snap.empty) {
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const cleaned = list.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
+          const finalList = cleaned.length > 0 ? cleaned : INITIAL_ADVISORS;
+          localStorage.setItem(ADVISORS_STORAGE_KEY, JSON.stringify(finalList));
+          return finalList;
+        } else {
+          // Si la colección 'advisors' en Firestore está vacía, sembrar el asesor inicial de inmediato
+          console.log('[Firebase] Colección advisors vacía. Sembrando asesores iniciales...');
+          for (const adv of localList) {
+            await setDoc(doc(db, 'advisors', adv.id), adv, { merge: true });
+          }
+          return localList;
+        }
+      } catch (err) {
+        console.warn('[Firebase] Error leyendo advisors de Firestore:', err.message);
+      }
+    }
+
+    // 2. Fallback a caché local
+    return localList;
+  },
+
+  async saveAdvisor(advisor) {
+    if (!advisor) return null;
+    const list = this.getAdvisorsSync();
+    const id = advisor.id || `advisor-${Date.now()}`;
+    const now = new Date().toISOString();
+    const updatedAdvisor = {
+      id,
+      name: advisor.name || 'Asesor Comercial',
+      role: advisor.role || 'Asesor Comercial Especializado',
+      phone: advisor.phone || '+51 987 654 321',
+      email: advisor.email || '',
+      isDefault: Boolean(advisor.isDefault),
+      active: advisor.active !== false,
+      createdAt: advisor.createdAt || now,
+      updatedAt: now
+    };
+
+    // Si este asesor es default, desmarcar los demás
+    let updatedList;
+    if (updatedAdvisor.isDefault) {
+      updatedList = list.map(a => (a.id === id ? updatedAdvisor : { ...a, isDefault: false }));
+      if (!updatedList.some(a => a.id === id)) {
+        updatedList.push(updatedAdvisor);
+      }
+    } else {
+      const idx = list.findIndex(a => a.id === id);
+      if (idx >= 0) {
+        updatedList = [...list];
+        updatedList[idx] = updatedAdvisor;
+      } else {
+        updatedList = [...list, updatedAdvisor];
+      }
+    }
+
+    // Garantizar que siempre haya al menos uno marcado como default
+    if (!updatedList.some(a => a.isDefault) && updatedList.length > 0) {
+      updatedList[0].isDefault = true;
+    }
+
+    try {
+      localStorage.setItem(ADVISORS_STORAGE_KEY, JSON.stringify(updatedList));
+      // Sincronizar en configuración para mantener compatibilidad con todos los componentes
+      const cfg = this.getConfigSync();
+      cfg.advisors = updatedList;
+      cfg.advisor = updatedList.find(a => a.isDefault) || updatedList[0];
+      localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(cfg));
+    } catch (e) {
+      console.error('Error guardando asesores localmente:', e);
+    }
+
+    // Persistir directamente en Firebase Firestore
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'advisors', updatedAdvisor.id), updatedAdvisor, { merge: true });
+        if (updatedAdvisor.isDefault) {
+          for (const a of updatedList) {
+            if (a.id !== updatedAdvisor.id) {
+              await setDoc(doc(db, 'advisors', a.id), { isDefault: false, updatedAt: now }, { merge: true });
+            }
+          }
+        }
+        console.log('[Firebase] Asesor guardado exitosamente en Firestore:', updatedAdvisor.id);
+      } catch (err) {
+        console.warn('[Firebase] Error guardando asesor en Firestore:', err.message);
+      }
+    }
+
+    return updatedAdvisor;
+  },
+
+  async deleteAdvisor(id) {
+    const list = this.getAdvisorsSync();
+    if (list.length <= 1) {
+      console.warn('[Storage] No se puede eliminar el único asesor comercial registrado.');
+      return false;
+    }
+    const updated = list.filter(a => a.id !== id);
+    if (!updated.some(a => a.isDefault) && updated.length > 0) {
+      updated[0].isDefault = true;
+    }
+
+    try {
+      localStorage.setItem(ADVISORS_STORAGE_KEY, JSON.stringify(updated));
+      const cfg = this.getConfigSync();
+      cfg.advisors = updated;
+      cfg.advisor = updated.find(a => a.isDefault) || updated[0];
+      localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(cfg));
+    } catch (e) {}
+
+    if (isFirebaseConfigured && db) {
+      try {
+        await deleteDoc(doc(db, 'advisors', id));
+        console.log('[Firebase] Asesor eliminado de Firestore:', id);
+      } catch (err) {
+        console.warn('[Firebase] Error eliminando asesor de Firestore:', err.message);
+      }
+    }
+
+    return true;
+  },
+
+  async setDefaultAdvisor(id) {
+    const list = this.getAdvisorsSync();
+    const target = list.find(a => a.id === id);
+    if (!target) return false;
+    return await this.saveAdvisor({ ...target, isDefault: true });
   }
 };
 

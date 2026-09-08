@@ -125,6 +125,7 @@ export default function ProformaTable({
               <tr className="border-b border-slate-100 bg-slate-50/50">
                 <th className="py-4 px-6 text-xs font-semibold text-slate-500 tracking-wider">CÓDIGO</th>
                 <th className="py-4 px-6 text-xs font-semibold text-slate-500 tracking-wider">CLIENTE</th>
+                <th className="py-4 px-6 text-xs font-semibold text-slate-500 tracking-wider">ASESOR</th>
                 <th className="py-4 px-6 text-xs font-semibold text-slate-500 tracking-wider">FECHA</th>
                 <th className="py-4 px-6 text-xs font-semibold text-slate-500 tracking-wider">TOTAL</th>
                 <th className="py-4 px-6 text-xs font-semibold text-slate-500 tracking-wider">ESTADO</th>
@@ -134,6 +135,7 @@ export default function ProformaTable({
             <tbody className="divide-y divide-slate-100">
               {proformas.map((p) => {
                 const clientName = p.client?.name?.trim() || 'Cliente Particular';
+                const advisorName = p.advisorName?.trim() || 'Daniel Balarezo';
                 const isCurrentMenuOpen = activeMenu?.id === p.id;
 
                 return (
@@ -162,6 +164,25 @@ export default function ProformaTable({
                           {p.client?.docNumber && (
                             <span className="text-[11px] text-slate-500 font-mono block">
                               {p.client?.docType || 'DNI'}: {p.client.docNumber}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Asesor Comercial */}
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-bold shrink-0">
+                          {getInitials(advisorName)}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-semibold text-slate-800 truncate max-w-[150px] block">
+                            {advisorName}
+                          </span>
+                          {p.advisorPhone && (
+                            <span className="text-[10px] text-emerald-700 font-medium block">
+                              {p.advisorPhone}
                             </span>
                           )}
                         </div>

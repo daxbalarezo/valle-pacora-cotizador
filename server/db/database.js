@@ -6,7 +6,8 @@ import {
   SEED_PROFORMAS, 
   SEED_CLIENTS, 
   SEED_TEMPLATES, 
-  SEED_CONFIG 
+  SEED_CONFIG,
+  SEED_ADVISORS
 } from './seed.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -45,7 +46,8 @@ class Database {
             proformas: SEED_PROFORMAS,
             clients: SEED_CLIENTS,
             templates: SEED_TEMPLATES,
-            config: SEED_CONFIG
+            config: SEED_CONFIG,
+            advisors: SEED_ADVISORS
           };
         }
         this.data = baseData;
@@ -61,7 +63,8 @@ class Database {
         proformas: SEED_PROFORMAS,
         clients: SEED_CLIENTS,
         templates: SEED_TEMPLATES,
-        config: SEED_CONFIG
+        config: SEED_CONFIG,
+        advisors: SEED_ADVISORS
       };
       this.initialized = true;
     }

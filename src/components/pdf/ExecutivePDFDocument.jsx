@@ -496,9 +496,9 @@ export default function ExecutivePDFDocument({ proforma = {}, property = {} }) {
   const clientPhone = proforma.client?.phone || '';
   const clientEmail = proforma.client?.email || '';
 
-  const advisorName = proforma.advisorName || 'Cesar Alvarado';
+  const advisorName = proforma.advisorName || 'Daniel Balarezo';
   const advisorRole = proforma.advisorRole || 'Asesor Comercial Especializado';
-  const advisorPhone = proforma.advisorPhone || '+51 908 925 216';
+  const advisorPhone = proforma.advisorPhone || '+51 987 654 321';
 
   // Variables de Financiamiento y Matemática de Cuotas
   const totalAmount = Number(proforma.total) || 60000;

@@ -25,25 +25,18 @@ import { storageService, DEFAULT_CONFIG } from '../services/storageService';
 
 export default function Settings({
   config,
+  advisors = [],
+  onRefreshAdvisors,
   onSaveConfig,
   onNavigateTab,
   onNewProforma
 }) {
   const [formData, setFormData] = useState(() => {
     const base = config || storageService.getConfigSync() || {};
-    let advs = Array.isArray(base.advisors) ? base.advisors : [];
+    let advs = Array.isArray(advisors) && advisors.length > 0 ? advisors : (Array.isArray(base.advisors) ? base.advisors : []);
     advs = advs.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
     if (advs.length === 0) {
-      advs = [
-        {
-          id: 'advisor-1',
-          name: base.advisor?.name || 'Daniel Balarezo',
-          role: base.advisor?.role || 'Asesor Comercial Especializado',
-          phone: base.advisor?.phone || '+51 987 654 321',
-          email: base.advisor?.email || 'daniel.balarezo@vallepacora.pe',
-          isDefault: true
-        }
-      ];
+      advs = storageService.getAdvisorsSync();
     }
     return { ...base, advisors: advs };
   });
@@ -51,33 +44,28 @@ export default function Settings({
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [advisorSaveSuccess, setAdvisorSaveSuccess] = useState(false);
 
-  // Sincronizar formData cuando el prop config cambie o cargue
+  // Sincronizar formData cuando el prop config o advisors cambie
   useEffect(() => {
-    if (config && Object.keys(config).length > 0) {
+    if (advisors && advisors.length > 0) {
+      const cleaned = advisors.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
+      setFormData(prev => ({
+        ...prev,
+        advisors: cleaned,
+        advisor: cleaned.find(a => a.isDefault) || cleaned[0] || prev.advisor
+      }));
+    } else if (config && Object.keys(config).length > 0) {
       setFormData(prev => {
         const next = { ...prev, ...config };
         let advs = Array.isArray(next.advisors) ? next.advisors : [];
         advs = advs.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza');
         if (advs.length === 0) {
-          const syncCfg = storageService.getConfigSync();
-          advs = (syncCfg?.advisors && syncCfg.advisors.length > 0)
-            ? syncCfg.advisors.filter(a => a.name !== 'Janet Morales' && a.name !== 'Carlos Mendoza')
-            : [
-                {
-                  id: 'advisor-1',
-                  name: next.advisor?.name || 'Daniel Balarezo',
-                  role: next.advisor?.role || 'Asesor Comercial Especializado',
-                  phone: next.advisor?.phone || '+51 987 654 321',
-                  email: next.advisor?.email || 'daniel.balarezo@vallepacora.pe',
-                  isDefault: true
-                }
-              ];
+          advs = storageService.getAdvisorsSync();
         }
         next.advisors = advs;
         return next;
       });
     }
-  }, [config]);
+  }, [config, advisors]);
 
   // Sub-handlers
   const handleCompanyChange = (field, value) => {
@@ -94,10 +82,28 @@ export default function Settings({
       ...(updatedPrimary ? { advisor: updatedPrimary } : {})
     };
     setFormData(updated);
+
+    // Persistir cada asesor en la colección 'advisors' de Firebase Firestore
+    try {
+      if (Array.isArray(updatedAdvisors)) {
+        for (const adv of updatedAdvisors) {
+          if (adv && adv.name?.trim()) {
+            await storageService.saveAdvisor(adv);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error persistiendo asesores en Firestore:', err);
+    }
+
     if (onSaveConfig) {
       await onSaveConfig(updated);
     } else {
       await storageService.saveConfig(updated);
+    }
+
+    if (onRefreshAdvisors) {
+      onRefreshAdvisors();
     }
   };
 
@@ -153,6 +159,11 @@ export default function Settings({
       return;
     }
     const target = list[index];
+    if (target?.id) {
+      try {
+        await storageService.deleteAdvisor(target.id);
+      } catch (e) {}
+    }
     const filtered = list.filter((_, i) => i !== index);
     let primary = undefined;
     if (target.isDefault && filtered.length > 0) {

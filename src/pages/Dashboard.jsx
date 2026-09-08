@@ -7,6 +7,7 @@ import { formatCurrency } from '../utils/formatters';
 
 export default function Dashboard({ 
   proformas = [], 
+  advisors = [],
   onNewProforma, 
   onEditProforma, 
   onDuplicateProforma,
@@ -19,14 +20,15 @@ export default function Dashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProformaForShare, setSelectedProformaForShare] = useState(null);
 
-  // Filtrado de proformas por búsqueda
+  // Filtrado de proformas por búsqueda (código, cliente, DNI o asesor)
   const filteredProformas = useMemo(() => {
     if (!searchQuery.trim()) return proformas;
     const q = searchQuery.toLowerCase();
     return proformas.filter(p => 
       p.code?.toLowerCase().includes(q) ||
       p.client?.name?.toLowerCase().includes(q) ||
-      p.client?.docNumber?.includes(q)
+      p.client?.docNumber?.includes(q) ||
+      p.advisorName?.toLowerCase().includes(q)
     );
   }, [proformas, searchQuery]);
 

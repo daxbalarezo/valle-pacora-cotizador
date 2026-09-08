@@ -185,37 +185,67 @@ export const SEED_CONFIG = {
     separationAmount: 1000,
     defaultNotes: "Forma de pago: S/ 1,000 de separación y cuota inicial completada en máximo 15 días.\nTiempo de validez de la proforma 7 días calendarios.\nEntrega de puntos de riego presurizado y título independizado en Sunarp."
   },
-  advisor: {
+export const SEED_ADVISORS = [
+  {
+    id: "advisor-1",
     name: "Daniel Balarezo",
-    role: "Asesor Comercial",
+    role: "Asesor Comercial Especializado",
     phone: "+51 987 654 321",
-    email: "daniel.balarezo@vallepacora.pe"
+    email: "daniel.balarezo@vallepacora.pe",
+    isDefault: true,
+    active: true,
+    createdAt: "2026-09-01T10:00:00.000Z",
+    updatedAt: "2026-09-01T10:00:00.000Z"
+  }
+];
+
+export const SEED_CONFIG = {
+  company: {
+    name: "Roble Constructora del Peru SAC",
+    brandName: "Valle Pacora",
+    ruc: "20611738022",
+    address: "Av. Victor Raul Haya de la Torre N° 127 Piso 2",
+    city: "Chiclayo, Perú",
+    phone: "+51 974 882 104",
+    email: "ventas@robleconstructora.pe",
+    website: "www.vallepacora.pe"
   },
-  advisors: [
+  bankAccounts: [
     {
-      id: "advisor-1",
-      name: "Daniel Balarezo",
-      role: "Asesor Comercial Especializado",
-      phone: "+51 987 654 321",
-      email: "daniel.balarezo@vallepacora.pe",
-      isDefault: true
+      id: "bank-bcp",
+      bank: "Banco de Crédito del Perú (BCP)",
+      currency: "Soles (PEN)",
+      accountType: "Cuenta Corriente",
+      accountNumber: "3057063526053",
+      cci: "00230500706352605315",
+      holder: "Roble Constructora del Peru SAC"
     },
     {
-      id: "advisor-2",
-      name: "Janet Morales",
-      role: "Asesora Comercial de Ventas",
-      phone: "+51 984 123 789",
-      email: "janet.morales@vallepacora.pe",
-      isDefault: false
+      id: "bank-bbva-pen",
+      bank: "BBVA Continental",
+      currency: "Soles (PEN)",
+      accountType: "Cuenta Corriente",
+      accountNumber: "001103480200403552",
+      cci: "01134800020040355209",
+      holder: "Roble Constructora del Peru SAC"
     },
     {
-      id: "advisor-3",
-      name: "Carlos Mendoza",
-      role: "Ejecutivo de Inversiones Agrícolas",
-      phone: "+51 974 882 104",
-      email: "carlos.mendoza@vallepacora.pe",
-      isDefault: false
+      id: "bank-bbva-usd",
+      bank: "BBVA Continental",
+      currency: "Dólares (USD)",
+      accountType: "Cuenta Corriente",
+      accountNumber: "001103480200438836",
+      cci: "01134800020043883605",
+      holder: "Roble Constructora del Peru SAC"
     }
   ],
+  commercialDefaults: {
+    currency: "PEN",
+    validDays: 7,
+    separationAmount: 1000,
+    defaultNotes: "Forma de pago: S/ 1,000 de separación y cuota inicial completada en máximo 15 días.\nTiempo de validez de la proforma 7 días calendarios.\nEntrega de puntos de riego presurizado y título independizado en Sunarp."
+  },
+  advisor: SEED_ADVISORS[0],
+  advisors: SEED_ADVISORS,
   whatsappMessageTemplate: "Hola {cliente}, le saluda {asesor} de Valle Pacora. Le comparto su cotización formal {codigo} por su Parcela Agrícola de {monto}:\n\nPuede revisarla en línea y descargar el PDF oficial aquí:\n{enlace}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación."
 };
