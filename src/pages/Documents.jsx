@@ -108,7 +108,7 @@ export default function Documents({ onNavigateTab, onNewProforma }) {
   const currentFiles = (currentFolder?.children || []).filter(c => !c.isFolder);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col md:flex-row">
       {/* Sidebar de navegación */}
       <Sidebar 
         currentTab="documentos" 
@@ -117,7 +117,7 @@ export default function Documents({ onNavigateTab, onNewProforma }) {
       />
 
       {/* Contenedor Principal */}
-      <main className="flex-1 p-8 overflow-y-auto max-w-7xl mx-auto">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
         {/* Cabecera Principal */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>

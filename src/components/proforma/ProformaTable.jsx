@@ -119,7 +119,8 @@ export default function ProformaTable({
   return (
     <>
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm relative min-h-[380px]">
-        <div className="overflow-x-auto">
+        {/* ================= VISTA ESCRITORIO (>= md) ================= */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
@@ -231,6 +232,78 @@ export default function ProformaTable({
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* ================= VISTA MÓVIL (< md) ================= */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {proformas.map((p) => {
+            const clientName = p.client?.name?.trim() || 'Cliente Particular';
+            const advisorName = p.advisorName?.trim() || 'Daniel Balarezo';
+            const isCurrentMenuOpen = activeMenu?.id === p.id;
+
+            return (
+              <div 
+                key={p.id} 
+                className="p-4 hover:bg-slate-50/70 transition-colors cursor-pointer space-y-2.5 active:bg-slate-50"
+                onClick={() => onEdit(p)}
+              >
+                {/* Fila Superior: Código, Estado y Menú */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-display font-bold text-[#0e692e]">
+                      {p.code}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      • {p.formattedDate || '04 Sep 2026'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    {getStatusBadge(p.status)}
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenMenu(e, p)}
+                      className={`p-1.5 rounded-lg transition-all ${
+                        isCurrentMenuOpen 
+                          ? 'bg-[#eef7f2] text-[#0e692e] ring-2 ring-[#0e692e]/20' 
+                          : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <MoreHorizontal className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Fila Media: Cliente y Total */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-8 h-8 rounded-full bg-[#eef7f2] border border-[#0e692e]/20 text-[#0e692e] flex items-center justify-center text-xs font-bold shrink-0">
+                      {getInitials(clientName)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {clientName}
+                      </p>
+                      {p.client?.docNumber && (
+                        <p className="text-[11px] text-slate-500 font-mono">
+                          {p.client?.docType || 'DNI'}: {p.client.docNumber}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-display font-bold text-slate-900 tabular-nums block">
+                      {formatCurrency(p.total, p.currency)}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium truncate block max-w-[120px]">
+                      {advisorName}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
