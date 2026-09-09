@@ -285,8 +285,12 @@ export default function Settings({
       .replace('{cliente}', 'Janet Mendoza')
       .replace('{asesor}', formData.advisor?.name || 'Daniel Balarezo')
       .replace('{codigo}', '#COT-1044')
+      .replace('{propiedad}', 'Parcela Palta Hass (1,000 m²)')
       .replace('{monto}', 'S/ 60,000.00')
-      .replace('{enlace}', 'https://vallepacora.pe/p/cot-1044-janet');
+      .replace('{inicial}', 'S/ 20,000.00')
+      .replace('{meses}', '36')
+      .replace('{cuota}', 'S/ 1,111.11')
+      .replace('{enlace}', '');
   };
 
   return (
@@ -871,8 +875,8 @@ export default function Settings({
                     { tag: '{cliente}', desc: 'Nombre del Cliente' },
                     { tag: '{asesor}', desc: 'Nombre del Asesor' },
                     { tag: '{codigo}', desc: 'Código (#COT-1044)' },
-                    { tag: '{monto}', desc: 'Total en Soles' },
-                    { tag: '{enlace}', desc: 'Link de Consulta Web' }
+                    { tag: '{propiedad}', desc: 'Nombre del Lote' },
+                    { tag: '{monto}', desc: 'Total en Soles' }
                   ].map((v) => (
                     <button
                       key={v.tag}

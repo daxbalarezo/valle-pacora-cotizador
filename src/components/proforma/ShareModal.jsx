@@ -68,8 +68,19 @@ export default function ShareModal({
     const initialFormatted = proforma.initialPaymentAmount ? formatCurrency(proforma.initialPaymentAmount, proforma.currency) : null;
     const quotaFormatted = proforma.monthlyQuota ? formatCurrency(proforma.monthlyQuota, proforma.currency) : null;
 
+    let financingLines = '';
+    if (hasFinancing && initialFormatted && quotaFormatted) {
+      financingLines = `💵 *Cuota Inicial:* ${initialFormatted}\n📅 *Financiamiento:* ${proforma.months} cuotas de ${quotaFormatted} mensuales (financiamiento directo sin bancos)`;
+    } else {
+      financingLines = `💵 *Modalidad:* Pago al Contado`;
+    }
+
     let rawText = config?.whatsappMessageTemplate;
-    if (rawText) {
+    
+    // Si la plantilla contiene enlaces o el tag {enlace}, la reemplazamos por el mensaje formal limpio
+    if (!rawText || rawText.includes('{enlace}') || rawText.includes('Puede revisarla en línea') || rawText.includes('http')) {
+      rawText = `Hola *${clientName}*, le saluda *${advisorName}* de *Valle Pacora / Roble Constructora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n📄 *Proforma:* ${proforma.code}\n🏡 *Proyecto:* ${propertyTitle}\n💰 *Monto Total:* ${totalFormatted}\n${financingLines}\n\nQuedo a su entera disposición para coordinar los siguientes pasos de su separación o resolver cualquier consulta.\n\nAtentamente,\n*${advisorName}*\n_Valle Pacora · Roble Constructora_`;
+    } else {
       rawText = rawText
         .replace(/{cliente}/g, clientName)
         .replace(/{asesor}/g, advisorName)
@@ -78,18 +89,7 @@ export default function ShareModal({
         .replace(/{monto}/g, totalFormatted)
         .replace(/{inicial}/g, initialFormatted || 'Según acuerdo')
         .replace(/{meses}/g, String(proforma.months || 1))
-        .replace(/{cuota}/g, quotaFormatted || '-')
-        .replace(/{enlace}/g, publicUrl);
-    } else {
-      // Mensaje formal estructurado para bienes raíces
-      let financingLines = '';
-      if (hasFinancing && initialFormatted && quotaFormatted) {
-        financingLines = `💵 *Cuota Inicial:* ${initialFormatted}\n📅 *Financiamiento:* ${proforma.months} cuotas de ${quotaFormatted} mensuales (directo sin bancos)`;
-      } else {
-        financingLines = `💵 *Modalidad:* Pago al Contado`;
-      }
-
-      rawText = `Estimado(a) *${clientName}*, le saluda *${advisorName}* de *Valle Pacora / Roble Constructora*.\n\nEs un gusto compartirle la propuesta económica formal correspondiente a su consulta:\n\n📄 *Cotización:* ${proforma.code}\n🏡 *Proyecto:* ${propertyTitle}\n💰 *Monto Total:* ${totalFormatted}\n${financingLines}\n\n🌐 *Puede revisar los detalles completos y descargar su proforma oficial en PDF aquí:*\n${publicUrl}\n\nQuedo a su disposición para coordinar una visita al proyecto o formalizar su reserva.\n\nAtentamente,\n*${advisorName}*\n_Valle Pacora · Roble Constructora_`;
+        .replace(/{cuota}/g, quotaFormatted || '-');
     }
 
     const message = encodeURIComponent(rawText);
