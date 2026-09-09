@@ -70,16 +70,16 @@ export default function ShareModal({
 
     let financingLines = '';
     if (hasFinancing && initialFormatted && quotaFormatted) {
-      financingLines = `💵 *Cuota Inicial:* ${initialFormatted}\n📅 *Financiamiento:* ${proforma.months} cuotas de ${quotaFormatted} mensuales (financiamiento directo sin bancos)`;
+      financingLines = `- *Cuota Inicial:* ${initialFormatted}\n- *Financiamiento:* ${proforma.months} cuotas de ${quotaFormatted} mensuales (financiamiento directo sin bancos)`;
     } else {
-      financingLines = `💵 *Modalidad:* Pago al Contado`;
+      financingLines = `- *Modalidad:* Pago al Contado`;
     }
 
     let rawText = config?.whatsappMessageTemplate;
     
-    // Si la plantilla contiene enlaces o el tag {enlace}, la reemplazamos por el mensaje formal limpio
-    if (!rawText || rawText.includes('{enlace}') || rawText.includes('Puede revisarla en línea') || rawText.includes('http')) {
-      rawText = `Hola *${clientName}*, le saluda *${advisorName}* de *Valle Pacora / Roble Constructora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n📄 *Proforma:* ${proforma.code}\n🏡 *Proyecto:* ${propertyTitle}\n💰 *Monto Total:* ${totalFormatted}\n${financingLines}\n\nQuedo a su entera disposición para coordinar los siguientes pasos de su separación o resolver cualquier consulta.\n\nAtentamente,\n*${advisorName}*\n_Valle Pacora · Roble Constructora_`;
+    // Si la plantilla contiene enlaces, emojis que causan caracteres raros o tags desactualizados
+    if (!rawText || rawText.includes('{enlace}') || rawText.includes('Puede revisarla en línea') || rawText.includes('http') || rawText.includes('📄') || rawText.includes('')) {
+      rawText = `Hola *${clientName}*, le saluda *${advisorName}* de *Valle Pacora / Roble Constructora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n- *Proforma:* ${proforma.code}\n- *Proyecto:* ${propertyTitle}\n- *Monto Total:* ${totalFormatted}\n${financingLines}\n\nQuedo a su entera disposición para coordinar los siguientes pasos de su separación o resolver cualquier consulta.\n\nAtentamente,\n*${advisorName}*\n_Valle Pacora - Roble Constructora_`;
     } else {
       rawText = rawText
         .replace(/{cliente}/g, clientName)

@@ -258,7 +258,7 @@ export const DEFAULT_CONFIG = {
   },
   advisor: INITIAL_ADVISORS[0],
   advisors: INITIAL_ADVISORS,
-  whatsappMessageTemplate: "Hola *{cliente}*, le saluda *{asesor}* de *Valle Pacora / Roble Constructora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n📄 *Proforma:* {codigo}\n🏡 *Proyecto:* {propiedad}\n💰 *Monto Total:* {monto}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación o atender cualquier consulta."
+  whatsappMessageTemplate: "Hola *{cliente}*, le saluda *{asesor}* de *Valle Pacora / Roble Constructora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n- *Proforma:* {codigo}\n- *Proyecto:* {propiedad}\n- *Monto Total:* {monto}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación o atender cualquier consulta."
 };
 
 export const OFFICIAL_BANK_ACCOUNTS = DEFAULT_CONFIG.bankAccounts;
