@@ -6,6 +6,7 @@ import CreateProforma from './pages/CreateProforma';
 import Clients from './pages/Clients';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
+import Documents from './pages/Documents';
 import PublicView from './pages/PublicView';
 import { downloadProformaPdf } from './utils/pdfGenerator';
 import { generateToken } from './utils/formatters';
@@ -389,6 +390,14 @@ export default function App() {
     setConfig(storageService.getConfigSync());
   };
 
+  const handleNavigateTab = (tab) => {
+    if (tab === 'proformas') setCurrentView('dashboard');
+    else if (tab === 'clientes') setCurrentView('clients');
+    else if (tab === 'plantillas') setCurrentView('templates');
+    else if (tab === 'documentos') setCurrentView('documents');
+    else if (tab === 'configuracion') setCurrentView('settings');
+  };
+
   return (
     <div className="relative min-h-screen">
       {/* Vista Principal según estado */}
@@ -402,12 +411,7 @@ export default function App() {
           onChangeStatus={handleChangeStatus}
           onDownloadPdf={handleDownloadPdf}
           onDeleteProforma={handleDeleteProforma}
-          onNavigateTab={(tab) => {
-            if (tab === 'proformas') setCurrentView('dashboard');
-            else if (tab === 'clientes') setCurrentView('clients');
-            else if (tab === 'plantillas') setCurrentView('templates');
-            else if (tab === 'configuracion') setCurrentView('settings');
-          }}
+          onNavigateTab={handleNavigateTab}
         />
       )}
 
@@ -419,12 +423,7 @@ export default function App() {
           onEditClient={handleEditClient}
           onDeleteClient={handleDeleteClient}
           onQuoteForClient={handleQuoteForClient}
-          onNavigateTab={(tab) => {
-            if (tab === 'proformas') setCurrentView('dashboard');
-            else if (tab === 'clientes') setCurrentView('clients');
-            else if (tab === 'plantillas') setCurrentView('templates');
-            else if (tab === 'configuracion') setCurrentView('settings');
-          }}
+          onNavigateTab={handleNavigateTab}
           onNewProforma={handleNewProforma}
           properties={properties}
           onDownloadPdf={handleDownloadPdf}
@@ -438,14 +437,16 @@ export default function App() {
           onEditTemplate={handleEditTemplate}
           onDeleteTemplate={handleDeleteTemplate}
           onUseTemplate={handleUseTemplate}
-          onNavigateTab={(tab) => {
-            if (tab === 'proformas') setCurrentView('dashboard');
-            else if (tab === 'clientes') setCurrentView('clients');
-            else if (tab === 'plantillas') setCurrentView('templates');
-            else if (tab === 'configuracion') setCurrentView('settings');
-          }}
+          onNavigateTab={handleNavigateTab}
           onNewProforma={handleNewProforma}
           properties={properties}
+        />
+      )}
+
+      {currentView === 'documents' && (
+        <Documents
+          onNavigateTab={handleNavigateTab}
+          onNewProforma={handleNewProforma}
         />
       )}
 
@@ -455,12 +456,7 @@ export default function App() {
           advisors={advisors}
           onRefreshAdvisors={refreshData}
           onSaveConfig={handleSaveConfig}
-          onNavigateTab={(tab) => {
-            if (tab === 'proformas') setCurrentView('dashboard');
-            else if (tab === 'clientes') setCurrentView('clients');
-            else if (tab === 'plantillas') setCurrentView('templates');
-            else if (tab === 'configuracion') setCurrentView('settings');
-          }}
+          onNavigateTab={handleNavigateTab}
           onNewProforma={handleNewProforma}
         />
       )}

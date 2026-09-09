@@ -9,6 +9,7 @@ export default function Sidebar({ currentTab, onSelectTab, onNewProforma }) {
     { id: 'proformas', label: 'Proformas' },
     { id: 'clientes', label: 'Clientes' },
     { id: 'plantillas', label: 'Plantillas' },
+    { id: 'documentos', label: 'Documentos' },
     { id: 'configuracion', label: 'Configuración' }
   ];
 
