@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { MessageSquare, FileText, Check, Copy } from 'lucide-react';
+import { MessageSquare, FileText, Check, Copy, Loader2 } from 'lucide-react';
 import { formatCurrency, formatPhoneNumber, getWhatsAppCleanPhone } from '../../utils/formatters';
 import { storageService } from '../../services/storageService';
+import { generateProformaPdfBlob } from '../../utils/pdfGenerator';
 
 export default function ShareModal({ 
   isOpen, 
@@ -10,6 +11,8 @@ export default function ShareModal({
   onDownloadPdf 
 }) {
   const [copied, setCopied] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [desktopHint, setDesktopHint] = useState(false);
 
   if (!isOpen || !proforma) return null;
 
@@ -53,39 +56,90 @@ export default function ShareModal({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleOpenWhatsApp = () => {
-    const config = storageService.getConfigSync();
-    const clientName = proforma.client?.name || 'Estimado(a) cliente';
-    const advisorName = proforma.advisorName || config?.advisor?.name || 'Daniel Balarezo';
-    const totalFormatted = formatCurrency(proforma.total, proforma.currency);
-    
-    let rawText = config?.whatsappMessageTemplate;
-    if (rawText) {
-      rawText = rawText
-        .replace(/{cliente}/g, clientName)
-        .replace(/{asesor}/g, advisorName)
-        .replace(/{codigo}/g, proforma.code)
-        .replace(/{monto}/g, totalFormatted)
-        .replace(/{enlace}/g, publicUrl);
-    } else {
-      rawText = `Hola ${clientName}, le saluda ${advisorName} de Roble Constructora / Valle Pacora. Le comparto su cotización formal ${proforma.code} por un monto de ${totalFormatted}:\n\nPuede revisarla en línea y descargar el PDF oficial aquí:\n${publicUrl}\n\nQuedo atento a cualquier consulta para coordinar su visita o separación.`;
+  const handleOpenWhatsApp = async () => {
+    setIsSharing(true);
+    setDesktopHint(false);
+
+    try {
+      const config = storageService.getConfigSync();
+      const clientName = proforma.client?.name || 'Estimado(a) cliente';
+      const advisorName = proforma.advisorName || config?.advisor?.name || 'Daniel Balarezo';
+      const totalFormatted = formatCurrency(proforma.total, proforma.currency);
+      
+      let rawText = config?.whatsappMessageTemplate;
+      if (rawText) {
+        rawText = rawText
+          .replace(/{cliente}/g, clientName)
+          .replace(/{asesor}/g, advisorName)
+          .replace(/{codigo}/g, proforma.code)
+          .replace(/{monto}/g, totalFormatted)
+          .replace(/{enlace}/g, publicUrl);
+      } else {
+        rawText = `Hola ${clientName}, le saluda ${advisorName} de Roble Constructora / Valle Pacora. Le comparto su cotización formal ${proforma.code} por un monto de ${totalFormatted}:\n\nPuede revisarla en línea y descargar el PDF oficial aquí:\n${publicUrl}\n\nQuedo atento a cualquier consulta para coordinar su visita o separación.`;
+      }
+
+      // 1. Generar el Blob del PDF
+      const blob = await generateProformaPdfBlob(proforma);
+      const cleanCode = (proforma.code || 'VallePacora').replace('#', '');
+      const fileName = `Proforma-${cleanCode}.pdf`;
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+
+      // 2. Comprobar si el navegador soporta compartir archivos nativos (móviles iOS / Android)
+      const canShareFile = typeof navigator !== 'undefined' && 
+                           navigator.canShare && 
+                           navigator.canShare({ files: [file] });
+
+      if (canShareFile) {
+        try {
+          await navigator.share({
+            title: `Proforma ${proforma.code} - Valle Pacora`,
+            text: rawText,
+            files: [file],
+          });
+          setIsSharing(false);
+          return;
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') {
+            // El usuario cerró la ventana de compartir nativa
+            setIsSharing(false);
+            return;
+          }
+          console.warn('[ShareModal] navigator.share falló, ejecutando fallback:', shareErr);
+        }
+      }
+
+      // 3. Fallback inteligente para Desktop (WhatsApp Web no permite inyección de archivos por enlace):
+      // Descargar el PDF directamente para que el usuario no tenga que hacer nada más que arrastrarlo
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Abrir WhatsApp Web con el mensaje prellenado
+      const message = encodeURIComponent(rawText);
+      const cleanPhone = getWhatsAppCleanPhone(proforma.client?.phone);
+      const waUrl = cleanPhone 
+        ? `https://wa.me/${cleanPhone}?text=${message}` 
+        : `https://wa.me/?text=${message}`;
+
+      window.open(waUrl, '_blank');
+      setDesktopHint(true);
+    } catch (error) {
+      console.error('[ShareModal] Error al procesar WhatsApp:', error);
+      alert('Hubo un inconveniente al generar el PDF: ' + error.message);
+    } finally {
+      setIsSharing(false);
     }
-
-    const message = encodeURIComponent(rawText);
-    
-    // Asegurar código de país 51 para evitar número erróneo
-    const cleanPhone = getWhatsAppCleanPhone(proforma.client?.phone);
-    const waUrl = cleanPhone 
-      ? `https://wa.me/${cleanPhone}?text=${message}` 
-      : `https://wa.me/?text=${message}`;
-
-    window.open(waUrl, '_blank');
   };
 
   return (
     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-150">
       <div 
-        className="bg-white rounded-3xl p-8 max-w-xl w-full shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200"
+        className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -132,31 +186,57 @@ export default function ShareModal({
         </div>
 
         {/* Option 2: Tarjeta WhatsApp */}
-        <div className="border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between mb-4 hover:border-slate-300 transition-colors">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#DCFCE7] flex items-center justify-center text-[#059669] shrink-0">
-              <MessageSquare className="w-5 h-5 fill-current" />
+        <div className="border border-slate-200/80 rounded-2xl p-4 mb-4 hover:border-slate-300 transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#DCFCE7] flex items-center justify-center text-[#059669] shrink-0">
+                <MessageSquare className="w-5 h-5 fill-current" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">
+                  Enviar por WhatsApp
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {proforma.client?.phone ? (
+                    <span>Destinatario: <strong className="text-emerald-700 font-mono">{formatPhoneNumber(proforma.client.phone)}</strong></span>
+                  ) : (
+                    'Adjunta el PDF automáticamente y abre WhatsApp.'
+                  )}
+                </p>
+                <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium mt-1">
+                  <span>📎 Adjunta el PDF oficial en el mensaje</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h4 className="text-sm font-bold text-slate-900">
-                Enviar por WhatsApp
-              </h4>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {proforma.client?.phone ? (
-                  <span>Destinatario: <strong className="text-emerald-700 font-mono">{formatPhoneNumber(proforma.client.phone)}</strong></span>
-                ) : (
-                  'Abre WhatsApp Web con un mensaje personalizado y enlace adjunto.'
-                )}
-              </p>
-            </div>
+
+            <button
+              onClick={handleOpenWhatsApp}
+              disabled={isSharing}
+              className="bg-[#059669] hover:bg-emerald-700 disabled:opacity-75 disabled:cursor-wait text-white font-medium text-xs px-5 py-2.5 rounded-xl shadow-sm transition-colors shrink-0 flex items-center gap-2"
+            >
+              {isSharing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Preparando...</span>
+                </>
+              ) : (
+                'Enviar'
+              )}
+            </button>
           </div>
 
-          <button
-            onClick={handleOpenWhatsApp}
-            className="bg-[#059669] hover:bg-emerald-700 text-white font-medium text-xs px-6 py-2.5 rounded-xl shadow-sm transition-colors shrink-0"
-          >
-            Abrir
-          </button>
+          {/* Aviso contextual cuando se usa en Desktop */}
+          {desktopHint && (
+            <div className="mt-3 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-xl p-3 flex items-start gap-2 animate-in fade-in duration-150">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold">¡PDF descargado y WhatsApp abierto!</span>
+                <p className="text-emerald-700 text-[11px] mt-0.5 leading-relaxed">
+                  El archivo PDF ya se descargó en tu computadora. Solo arrástralo a la conversación de WhatsApp Web que se acaba de abrir.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Option 3: Descargar PDF Certificado */}

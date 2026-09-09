@@ -3,14 +3,17 @@ import { pdf } from '@react-pdf/renderer';
 import ExecutivePDFDocument from '../components/pdf/ExecutivePDFDocument';
 import { storageService } from '../services/storageService';
 
+export async function generateProformaPdfBlob(proforma) {
+  const properties = storageService.getProperties();
+  const property = properties.find(p => p.id === proforma.selectedPropertyId) || properties[0];
+  const element = React.createElement(ExecutivePDFDocument, { proforma, property });
+  return await pdf(element).toBlob();
+}
+
 export async function downloadProformaPdf(proforma) {
   try {
     console.log('[PDF] Generando proforma ejecutiva con logotipo oficial Valle Pacora:', proforma?.code);
-    const properties = storageService.getProperties();
-    const property = properties.find(p => p.id === proforma.selectedPropertyId) || properties[0];
-
-    const element = React.createElement(ExecutivePDFDocument, { proforma, property });
-    const blob = await pdf(element).toBlob();
+    const blob = await generateProformaPdfBlob(proforma);
 
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
