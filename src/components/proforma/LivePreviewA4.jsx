@@ -6,6 +6,22 @@ import { MEMBRETE_OFICIAL_BG } from '../../assets/membreteBase64';
 
 export default function LivePreviewA4({ proforma, property }) {
   const [activePreviewPage, setActivePreviewPage] = useState(1);
+  const containerRef = React.useRef(null);
+  const [scale, setScale] = useState(1);
+
+  React.useEffect(() => {
+    const updateScale = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.clientWidth;
+        const newScale = Math.min(1, Math.max(0.4, (width - 16) / 595));
+        setScale(newScale);
+      }
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, []);
 
   const clientName = proforma.client?.name || 'Nombre del Cliente';
   const clientDoc = proforma.client?.docNumber 
@@ -47,7 +63,7 @@ export default function LivePreviewA4({ proforma, property }) {
   const cropTitle = isArandano ? "Parcela Agrícola - Arándanos (1,000 m²)" : "Parcela Agrícola - Palta Hass (1,000 m²)";
 
   return (
-    <div className="flex flex-col items-center w-full">
+    <div ref={containerRef} className="flex flex-col items-center w-full">
       {/* Page switcher if 2 pages are enabled */}
       {hasFloorPlan && (
         <div className="flex items-center justify-between w-full max-w-[595px] mb-3 px-1">
@@ -84,11 +100,20 @@ export default function LivePreviewA4({ proforma, property }) {
         </div>
       )}
 
-      {/* Main A4 Document Sheet con Membrete Oficial Valle Pacora (Proporción exacta A4: 210 x 297 mm) */}
+      {/* Wrapper proporcional que escala en móviles sin distorsionar el documento */}
       <div 
-        className="w-full max-w-[595px] aspect-[210/297] bg-white border border-slate-200 shadow-xl rounded-xl pt-[84px] pb-[88px] px-7 sm:px-8 flex flex-col justify-between text-slate-800 transition-all font-sans select-none overflow-hidden bg-no-repeat bg-cover bg-center"
-        style={{ backgroundImage: `url(${MEMBRETE_OFICIAL_BG})`, backgroundSize: '100% 100%' }}
+        className="w-full flex justify-center overflow-visible transition-all"
+        style={{ height: `${842 * scale}px` }}
       >
+        {/* Main A4 Document Sheet con Membrete Oficial Valle Pacora (Proporción exacta A4: 595 x 842 pt) */}
+        <div 
+          className="w-[595px] h-[842px] bg-white border border-slate-200 shadow-xl rounded-xl pt-[84px] pb-[88px] px-7 sm:px-8 flex flex-col justify-between text-slate-800 transition-all font-sans select-none overflow-hidden bg-no-repeat bg-cover bg-center shrink-0 origin-top"
+          style={{ 
+            backgroundImage: `url(${MEMBRETE_OFICIAL_BG})`, 
+            backgroundSize: '100% 100%',
+            transform: `scale(${scale})`
+          }}
+        >
         {activePreviewPage === 1 ? (
           /* PAGE 1: PROPUESTA ECONÓMICA Y COMERCIAL */
           <div className="flex flex-col justify-between h-full">
@@ -414,6 +439,7 @@ export default function LivePreviewA4({ proforma, property }) {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

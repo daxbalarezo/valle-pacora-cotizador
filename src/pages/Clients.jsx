@@ -257,7 +257,8 @@ export default function Clients({
 
         {/* Tabla de Clientes */}
         <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* ================= VISTA ESCRITORIO (>= md) ================= */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 bg-[#F8FAFC]/60">
@@ -426,6 +427,101 @@ export default function Clients({
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* ================= VISTA MÓVIL (< md) ================= */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {filteredClients.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 text-xs">
+                No se encontraron clientes con los filtros seleccionados.
+              </div>
+            ) : (
+              filteredClients.map((client) => {
+                const quotesData = getClientProformasData(client);
+                return (
+                  <div 
+                    key={client.id}
+                    onClick={() => setSelectedDrawerClient(client)}
+                    className="p-4 hover:bg-slate-50/80 transition-colors cursor-pointer space-y-2.5 active:bg-slate-50"
+                  >
+                    {/* Fila 1: Avatar + Nombre + Badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-[#eef7f2] text-[#0e692e] font-display font-bold text-xs flex items-center justify-center shrink-0 border border-[#c7ecd5]">
+                          {getInitials(client.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-semibold text-slate-900 block text-xs truncate">
+                            {client.name}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-mono block">
+                            {client.docType}: {client.docNumber || 'S/N'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {getStatusBadge(quotesData.count > 0)}
+                    </div>
+
+                    {/* Fila 2: Teléfono, Ciudad y Cotizaciones */}
+                    <div className="bg-slate-50/80 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs">
+                      <div className="min-w-0">
+                        <span className="font-mono text-slate-800 text-[11px] block">
+                          {client.phone || 'Sin teléfono'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 inline-flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-slate-300" /> {client.city || 'Chiclayo'}
+                        </span>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        {quotesData.count > 0 ? (
+                          <>
+                            <span className="font-display font-bold text-slate-900 text-xs block tabular-nums">
+                              {formatCurrency(quotesData.sum).replace('.00', '')}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              {quotesData.count} {quotesData.count === 1 ? 'cotización' : 'cotizaciones'}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-slate-400 italic text-[10px] block">
+                            Sin cotizar
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Fila 3: Proyecto y Acciones Rápidas */}
+                    <div className="flex items-center justify-between pt-1" onClick={(e) => e.stopPropagation()}>
+                      <span className="text-[11px] text-slate-500 font-medium truncate max-w-[180px]">
+                        {client.interestProject || 'Valle Pacora'}
+                      </span>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => onQuoteForClient(client)}
+                          className="px-2.5 py-1 rounded-lg bg-[#eef7f2] hover:bg-[#d8eedf] text-[#0e692e] font-semibold text-[11px] flex items-center gap-1"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Cotizar</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenWhatsApp(client, e)}
+                          className="p-1.5 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E]"
+                          title="Contactar por WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </main>
