@@ -281,16 +281,33 @@ export default function Settings({
   // Simulación de vista previa de mensaje WhatsApp
   const previewWhatsAppMessage = () => {
     const template = formData.whatsappMessageTemplate || '';
-    return template
-      .replace('{cliente}', 'Janet Mendoza')
-      .replace('{asesor}', formData.advisor?.name || 'Daniel Balarezo')
-      .replace('{codigo}', '#COT-1044')
-      .replace('{propiedad}', 'Parcela Palta Hass (1,000 m²)')
-      .replace('{monto}', 'S/ 60,000.00')
-      .replace('{inicial}', 'S/ 20,000.00')
-      .replace('{meses}', '36')
-      .replace('{cuota}', 'S/ 1,111.11')
-      .replace('{enlace}', '');
+    const sampleFinancing = `- *Cuota Inicial:* S/ 20,000.00\n- *Financiamiento:* 24 cuotas de S/ 1,666.67 mensuales (financiamiento directo sin bancos)`;
+
+    let text = template;
+    if (!text.includes('{financiamiento}') && !text.includes('{detalles}') && !text.includes('{modalidad}')) {
+      if (text.includes('- *Monto Total:* {monto}')) {
+        text = text.replace('- *Monto Total:* {monto}', `- *Monto Total:* {monto}\n${sampleFinancing}`);
+      } else if (text.includes('{monto}')) {
+        text = text.replace('{monto}', `{monto}\n${sampleFinancing}`);
+      }
+    } else {
+      text = text
+        .replace(/{financiamiento}/g, sampleFinancing)
+        .replace(/{detalles}/g, sampleFinancing);
+    }
+
+    return text
+      .replace(/{cliente}/g, 'Janet Mendoza')
+      .replace(/{asesor}/g, formData.advisor?.name || 'Daniel Balarezo')
+      .replace(/{codigo}/g, '#COT-1044')
+      .replace(/{propiedad}/g, 'Parcela Agrícola - Palta Hass (1,000 m2)')
+      .replace(/{monto}/g, 'S/ 60,000.00')
+      .replace(/{modalidad}/g, 'Financiamiento Directo')
+      .replace(/{separacion}/g, 'S/ 1,000.00')
+      .replace(/{inicial}/g, 'S/ 20,000.00')
+      .replace(/{meses}/g, '24')
+      .replace(/{cuota}/g, 'S/ 1,666.67')
+      .replace(/{enlace}/g, '');
   };
 
   return (
@@ -875,8 +892,9 @@ export default function Settings({
                     { tag: '{cliente}', desc: 'Nombre del Cliente' },
                     { tag: '{asesor}', desc: 'Nombre del Asesor' },
                     { tag: '{codigo}', desc: 'Código (#COT-1044)' },
-                    { tag: '{propiedad}', desc: 'Nombre del Lote' },
-                    { tag: '{monto}', desc: 'Total en Soles' }
+                    { tag: '{propiedad}', desc: 'Nombre del Lote (1,000 m2)' },
+                    { tag: '{monto}', desc: 'Total en Soles' },
+                    { tag: '{financiamiento}', desc: 'Bloque Completo Cuotas / Modalidad' }
                   ].map((v) => (
                     <button
                       key={v.tag}

@@ -258,7 +258,7 @@ export const DEFAULT_CONFIG = {
   },
   advisor: INITIAL_ADVISORS[0],
   advisors: INITIAL_ADVISORS,
-  whatsappMessageTemplate: "Hola *{cliente}*, le saluda *{asesor}* de *Valle Pacora / Roble Constructora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n- *Proforma:* {codigo}\n- *Proyecto:* {propiedad}\n- *Monto Total:* {monto}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación o atender cualquier consulta."
+  whatsappMessageTemplate: "Hola *{cliente}*, le saluda *{asesor}* de *Valle Pacora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n- *Proforma:* {codigo}\n- *Proyecto:* {propiedad}\n- *Monto Total:* {monto}\n{financiamiento}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación o atender cualquier consulta.\n\nAtentamente,\n*{asesor}*\n_Valle Pacora - Roble Constructora_"
 };
 
 export const OFFICIAL_BANK_ACCOUNTS = DEFAULT_CONFIG.bankAccounts;
@@ -1059,6 +1059,10 @@ export const storageService = {
         }
         if (!parsed.advisors || parsed.advisors.length === 0) {
           parsed.advisors = DEFAULT_CONFIG.advisors;
+          hasChanges = true;
+        }
+        if (!parsed.whatsappMessageTemplate || (!parsed.whatsappMessageTemplate.includes('{financiamiento}') && !parsed.whatsappMessageTemplate.includes('{detalles}') && !parsed.whatsappMessageTemplate.includes('{modalidad}'))) {
+          parsed.whatsappMessageTemplate = DEFAULT_CONFIG.whatsappMessageTemplate;
           hasChanges = true;
         }
         if (hasChanges) {

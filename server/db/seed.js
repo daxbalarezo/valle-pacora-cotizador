@@ -148,43 +148,6 @@ export const SEED_TEMPLATES = [
   }
 ];
 
-export const SEED_CONFIG = {
-  company: {
-    name: "Roble Constructora del Peru SAC",
-    brandName: "Valle Pacora",
-    ruc: "20611738022",
-    address: "Av. Victor Raul Haya de la Torre N° 127 Piso 2",
-    city: "Chiclayo, Lambayeque, Perú",
-    phone: "+51 974 882 104",
-    email: "ventas@robleconstructora.pe",
-    website: "https://vallepacora.pe"
-  },
-  bankAccounts: [
-    {
-      id: "bank-bcp",
-      bank: "Banco de Crédito del Perú (BCP)",
-      currency: "Soles (PEN)",
-      accountType: "Cuenta Corriente",
-      accountNumber: "305-98451230-0-18",
-      cci: "002-305-009845123018-12",
-      holder: "Roble Constructora del Peru SAC"
-    },
-    {
-      id: "bank-bbva",
-      bank: "BBVA Continental",
-      currency: "Soles (PEN)",
-      accountType: "Cuenta Corriente",
-      accountNumber: "0011-0284-0100054892",
-      cci: "011-284-000100054892-34",
-      holder: "Roble Constructora del Peru SAC"
-    }
-  ],
-  commercialDefaults: {
-    currency: "PEN",
-    validDays: 7,
-    separationAmount: 1000,
-    defaultNotes: "Forma de pago: S/ 1,000 de separación y cuota inicial completada en máximo 15 días.\nTiempo de validez de la proforma 7 días calendarios.\nEntrega de puntos de riego presurizado y título independizado en Sunarp."
-  },
 export const SEED_ADVISORS = [
   {
     id: "advisor-1",
@@ -247,5 +210,5 @@ export const SEED_CONFIG = {
   },
   advisor: SEED_ADVISORS[0],
   advisors: SEED_ADVISORS,
-  whatsappMessageTemplate: "Hola {cliente}, le saluda {asesor} de Valle Pacora. Le comparto su cotización formal {codigo} por su Parcela Agrícola de {monto}:\n\nPuede revisarla en línea y descargar el PDF oficial aquí:\n{enlace}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación."
+  whatsappMessageTemplate: "Hola *{cliente}*, le saluda *{asesor}* de *Valle Pacora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n*Proforma:* {codigo}\n*Proyecto:* {propiedad}\n*Monto Total:* {monto}\n{financiamiento}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación o atender cualquier consulta.\n\nAtentamente,\n*{asesor}*\n_Valle Pacora - Roble Constructora_"
 };

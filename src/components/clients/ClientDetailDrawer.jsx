@@ -41,7 +41,7 @@ export default function ClientDetailDrawer({
   const handleOpenWhatsApp = () => {
     const cleanPhone = getWhatsAppCleanPhone(client.phone);
     const message = encodeURIComponent(
-      `Hola ${client.name}, le saluda Daniel Balarezo de Valle Pacora / Roble Constructora. Le contacto respecto a su interés en nuestro proyecto ${client.interestProject || 'Valle Pacora'}. ¿Cómo le va?`
+      `Hola ${client.name}, le saluda Daniel Balarezo de Valle Pacora. Le contacto respecto a su interés en nuestro proyecto ${client.interestProject || 'Valle Pacora'}. ¿Cómo le va?`
     );
     const waUrl = cleanPhone 
       ? `https://wa.me/${cleanPhone}?text=${message}` 

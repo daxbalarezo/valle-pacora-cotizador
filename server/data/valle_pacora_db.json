@@ -73,6 +73,108 @@
   ],
   "proformas": [
     {
+      "id": "cot-1017",
+      "code": "#COT-1017",
+      "advisorId": "advisor-1788889183623",
+      "advisorName": "Maite Rondoy",
+      "advisorPhone": "+51 908 925 210",
+      "advisorRole": "Asesor Comercial Especializado",
+      "advisorEmail": "",
+      "status": "enviada",
+      "currency": "PEN",
+      "createdAt": "2026-09-11T16:44:27.718Z",
+      "updatedAt": "2026-09-11T17:29:03.906Z",
+      "formattedDate": "11 set. 2026",
+      "client": {
+        "docType": "DNI",
+        "email": "",
+        "docNumber": "",
+        "name": "Maite Rondoy",
+        "phone": "+51 971 059 076",
+        "validDays": "7 días hábiles"
+      },
+      "items": [
+        {
+          "unitPrice": 60000,
+          "total": 60000,
+          "discount": 0,
+          "quantity": 1,
+          "id": "item-1789145258249",
+          "description": "Parcela Agrícola - Palta Hass (1,000 m²)"
+        }
+      ],
+      "includeFloorPlan": true,
+      "selectedPropertyId": "parcela-palta-1000",
+      "subtotal": 60000,
+      "totalDiscount": 0,
+      "tax": 0,
+      "total": 60000,
+      "conditions": {
+        "initialPayment": 20000,
+        "months": 24,
+        "validDays": 7,
+        "paymentMethod": "Financiamiento Directo / Separación con S/ 1,000",
+        "reservation": 1000,
+        "monthlyInstallment": 1666.6666666666667,
+        "paymentType": "financiado",
+        "notes": "Modalidad: Financiado (S/ 60,000).\nSeparación: S/ 1,000.\nInicial: S/ 20,000 en 15 días.\nSaldo: S/ 40,000 financiado en cuotas directas sin bancos.",
+        "balance": 40000
+      },
+      "publicToken": "p_b96ub3imtx6s1jd",
+      "selectedTemplateId": "tpl-palta-financiado"
+    },
+    {
+      "id": "cot-1016",
+      "code": "#COT-1016",
+      "advisorId": "advisor-1",
+      "advisorName": "Daniel Balarezo",
+      "advisorPhone": "+51 936 897 318",
+      "advisorRole": "Asesor Comercial Especializado",
+      "advisorEmail": "daniel.balarezo@vallepacora.pe",
+      "status": "enviada",
+      "currency": "PEN",
+      "createdAt": "2026-09-11T15:32:27.728Z",
+      "updatedAt": "2026-09-11T16:43:21.655Z",
+      "formattedDate": "11 set. 2026",
+      "client": {
+        "validDays": "7 días hábiles",
+        "phone": "+51 936 897 318",
+        "name": "",
+        "docNumber": "",
+        "docType": "DNI",
+        "email": ""
+      },
+      "items": [
+        {
+          "id": "item-1789144998750",
+          "description": "Parcela Agrícola - Palta Hass (1,000 m²)",
+          "quantity": 1,
+          "unitPrice": 60000,
+          "discount": 0,
+          "total": 60000
+        }
+      ],
+      "includeFloorPlan": true,
+      "selectedPropertyId": "parcela-palta-1000",
+      "subtotal": 60000,
+      "totalDiscount": 0,
+      "tax": 0,
+      "total": 60000,
+      "conditions": {
+        "initialPayment": 20000,
+        "validDays": 7,
+        "notes": "Modalidad: Financiado (S/ 60,000).\nSeparación: S/ 1,000.\nInicial: S/ 20,000 en 15 días.\nSaldo: S/ 40,000 financiado en cuotas directas sin bancos.",
+        "monthlyInstallment": 1666.6666666666667,
+        "paymentType": "financiado",
+        "reservation": 1000,
+        "balance": 40000,
+        "months": 24,
+        "paymentMethod": "Financiamiento Directo / Separación con S/ 1,000"
+      },
+      "publicToken": "p_y5z685xmtx47g7l",
+      "selectedTemplateId": "tpl-palta-financiado"
+    },
+    {
       "id": "cot-1001",
       "code": "#COT-1001",
       "advisorId": "asesor-daniel-balarezo",
@@ -262,6 +364,6 @@
         "isDefault": false
       }
     ],
-    "whatsappMessageTemplate": "Hola {cliente}, le saluda {asesor} de Valle Pacora. Le comparto su proforma formal {codigo} por su Parcela Agrícola de {monto}:\n\nPuede revisarla en línea y descargar el PDF oficial aquí:\n{enlace}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación."
+    "whatsappMessageTemplate": "Hola *{cliente}*, le saluda *{asesor}* de *Valle Pacora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n- *Proforma:* {codigo}\n- *Proyecto:* {propiedad}\n- *Monto Total:* {monto}\n{financiamiento}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación o atender cualquier consulta.\n\nAtentamente,\n*{asesor}*\n_Valle Pacora - Roble Constructora_"
   }
 }

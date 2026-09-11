@@ -36,7 +36,9 @@ export default function ShareModal({
         discount: proforma.discount,
         paymentSchedule: proforma.paymentSchedule,
         notes: proforma.notes,
-        status: proforma.status
+        status: proforma.status,
+        conditions: proforma.conditions,
+        items: proforma.items
       };
       const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(compactData))));
       return `${base}?d=${encoded}`;
@@ -53,45 +55,181 @@ export default function ShareModal({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleOpenWhatsApp = () => {
+  const getWhatsAppMessage = () => {
     const config = storageService.getConfigSync();
-    const clientName = proforma.client?.name || 'Estimado(a) cliente';
+    const clientName = proforma.client?.name?.trim() || 'Estimado(a) cliente';
     const advisorName = proforma.advisorName || config?.advisor?.name || 'Daniel Balarezo';
-    const totalFormatted = formatCurrency(proforma.total, proforma.currency);
+    const totalAmount = Number(proforma.total) || 60000;
+    const totalFormatted = formatCurrency(totalAmount, proforma.currency);
+    const conditions = proforma.conditions || {};
     
-    // Obtener información del lote / propiedad
+    // 1. Detección exhaustiva de cultivo: Arándanos vs Palta Hass
     const properties = storageService.getProperties();
     const property = properties.find(p => p.id === proforma.selectedPropertyId) || properties[0];
-    const propertyTitle = property?.title || 'Parcela Agrícola Valle Pacora';
+    
+    const isArandano = Boolean(
+      (property?.cropType && (property.cropType.toLowerCase().includes('arándano') || property.cropType.toLowerCase().includes('arandano'))) ||
+      (property?.category && (property.category.toLowerCase().includes('arándano') || property.category.toLowerCase().includes('arandano'))) ||
+      (property?.title && (property.title.toLowerCase().includes('arándano') || property.title.toLowerCase().includes('arandano'))) ||
+      (proforma?.selectedPropertyId && proforma.selectedPropertyId.includes('arandano')) ||
+      (proforma?.selectedTemplateId && proforma.selectedTemplateId.includes('arandano')) ||
+      (proforma?.items && proforma.items.some(it => (it.description || '').toLowerCase().includes('arándano') || (it.description || '').toLowerCase().includes('arandano')))
+    );
 
-    const hasFinancing = Number(proforma.months) > 1;
-    const initialFormatted = proforma.initialPaymentAmount ? formatCurrency(proforma.initialPaymentAmount, proforma.currency) : null;
-    const quotaFormatted = proforma.monthlyQuota ? formatCurrency(proforma.monthlyQuota, proforma.currency) : null;
+    // Título garantizado y limpio: SIEMPRE 1,000 m2 (sin caracteres raros)
+    const propertyTitle = isArandano
+      ? 'Parcela Agrícola - Arándanos (1,000 m2)'
+      : 'Parcela Agrícola - Palta Hass (1,000 m2)';
 
+    // 2. Detección exhaustiva de modalidad: Financiado vs Contado
+    const paymentType = (conditions.paymentType || proforma.paymentType || '').toLowerCase();
+    const paymentMethod = (conditions.paymentMethod || '').toLowerCase();
+    const notesText = `${conditions.notes || ''} ${proforma.notes || ''}`.toLowerCase();
+    const templateId = (proforma.selectedTemplateId || '').toLowerCase();
+
+    let isFinanced = false;
+    if (paymentType === 'financiado' || templateId.includes('financiado')) {
+      isFinanced = true;
+    } else if (paymentType === 'contado' || templateId.includes('contado')) {
+      isFinanced = false;
+    } else if (paymentMethod.includes('financ') || notesText.includes('financ') || notesText.includes('cuota') || notesText.includes('saldo:')) {
+      isFinanced = true;
+    } else if (paymentMethod.includes('contado') || notesText.includes('contado')) {
+      isFinanced = false;
+    } else if (Number(conditions.months || proforma.months) > 1) {
+      isFinanced = true;
+    } else {
+      // Regla por precio oficial:
+      // Palta Hass: 60,000 = financiado, 57,000 = contado
+      // Arándanos: 85,000 = financiado, 60,000 = contado
+      if (isArandano) {
+        isFinanced = totalAmount >= 75000;
+      } else {
+        isFinanced = totalAmount >= 60000;
+      }
+    }
+
+    // 3. Extracción de montos financieros
+    const defaultInitial = isArandano ? 45000 : 20000;
+
+    let initialNum = conditions.initialPayment !== undefined && conditions.initialPayment !== null
+      ? Number(conditions.initialPayment)
+      : (proforma.initialPaymentAmount !== undefined && proforma.initialPaymentAmount !== null
+          ? Number(proforma.initialPaymentAmount)
+          : null);
+
+    let reservationNum = conditions.reservation !== undefined && conditions.reservation !== null
+      ? Number(conditions.reservation)
+      : (proforma.reservation !== undefined && proforma.reservation !== null
+          ? Number(proforma.reservation)
+          : 1000);
+
+    let monthsNum = conditions.months !== undefined && conditions.months !== null
+      ? Number(conditions.months)
+      : (proforma.months !== undefined && proforma.months !== null
+          ? Number(proforma.months)
+          : 24);
+
+    // Si aún no tenemos inicial, intentar extraer de las notas (ej: "Inicial: S/ 20,000")
+    if ((initialNum === null || isNaN(initialNum)) && notesText) {
+      const initMatch = notesText.match(/inicial:\s*(?:s\/\.?\s*)?([0-9,.]+)/i);
+      if (initMatch) {
+        initialNum = parseFloat(initMatch[1].replace(/,/g, ''));
+      }
+    }
+    if (initialNum === null || isNaN(initialNum)) {
+      initialNum = defaultInitial;
+    }
+
+    // Separación desde notas si no vino en el objeto
+    if (isNaN(reservationNum) || reservationNum <= 0) {
+      if (notesText) {
+        const sepMatch = notesText.match(/separaci[oó]n:\s*(?:s\/\.?\s*)?([0-9,.]+)/i);
+        if (sepMatch) {
+          reservationNum = parseFloat(sepMatch[1].replace(/,/g, ''));
+        }
+      }
+      if (isNaN(reservationNum) || reservationNum <= 0) {
+        reservationNum = 1000;
+      }
+    }
+
+    const balanceNum = conditions.balance !== undefined && conditions.balance !== null
+      ? Number(conditions.balance)
+      : Math.max(0, totalAmount - initialNum);
+
+    let quotaNum = conditions.monthlyInstallment !== undefined && conditions.monthlyInstallment !== null
+      ? Number(conditions.monthlyInstallment)
+      : (proforma.monthlyQuota !== undefined && proforma.monthlyQuota !== null
+          ? Number(proforma.monthlyQuota)
+          : null);
+
+    if (quotaNum === null || isNaN(quotaNum)) {
+      quotaNum = monthsNum > 0 ? balanceNum / monthsNum : 0;
+    }
+
+    const initialFormatted = formatCurrency(initialNum, proforma.currency);
+    const quotaFormatted = formatCurrency(quotaNum, proforma.currency);
+
+    // 4. Construcción del bloque de financiamiento anterior con viñetas
     let financingLines = '';
-    if (hasFinancing && initialFormatted && quotaFormatted) {
-      financingLines = `- *Cuota Inicial:* ${initialFormatted}\n- *Financiamiento:* ${proforma.months} cuotas de ${quotaFormatted} mensuales (financiamiento directo sin bancos)`;
+    if (isFinanced) {
+      financingLines = `- *Cuota Inicial:* ${initialFormatted}\n- *Financiamiento:* ${monthsNum} cuotas de ${quotaFormatted} mensuales (financiamiento directo sin bancos)`;
     } else {
       financingLines = `- *Modalidad:* Pago al Contado`;
     }
 
+    // 5. Construcción garantizada del mensaje anterior
     let rawText = config?.whatsappMessageTemplate;
     
-    // Si la plantilla contiene enlaces, emojis que causan caracteres raros o tags desactualizados
-    if (!rawText || rawText.includes('{enlace}') || rawText.includes('Puede revisarla en línea') || rawText.includes('http') || rawText.includes('📄') || rawText.includes('')) {
-      rawText = `Hola *${clientName}*, le saluda *${advisorName}* de *Valle Pacora / Roble Constructora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n- *Proforma:* ${proforma.code}\n- *Proyecto:* ${propertyTitle}\n- *Monto Total:* ${totalFormatted}\n${financingLines}\n\nQuedo a su entera disposición para coordinar los siguientes pasos de su separación o resolver cualquier consulta.\n\nAtentamente,\n*${advisorName}*\n_Valle Pacora - Roble Constructora_`;
-    } else {
-      rawText = rawText
-        .replace(/{cliente}/g, clientName)
-        .replace(/{asesor}/g, advisorName)
-        .replace(/{codigo}/g, proforma.code)
-        .replace(/{propiedad}/g, propertyTitle)
-        .replace(/{monto}/g, totalFormatted)
-        .replace(/{inicial}/g, initialFormatted || 'Según acuerdo')
-        .replace(/{meses}/g, String(proforma.months || 1))
-        .replace(/{cuota}/g, quotaFormatted || '-');
+    if (!rawText || rawText.includes('{enlace}') || rawText.includes('Puede revisarla en línea') || rawText.includes('http') || rawText.includes('📄')) {
+      return [
+        `Hola *${clientName}*, le saluda *${advisorName}* de *Valle Pacora*.`,
+        ``,
+        `Le comparto los detalles de su cotización formal correspondiente a su consulta:`,
+        ``,
+        `- *Proforma:* ${proforma.code}`,
+        `- *Proyecto:* ${propertyTitle}`,
+        `- *Monto Total:* ${totalFormatted}`,
+        `${financingLines}`,
+        ``,
+        `Quedo a su entera disposición para coordinar los siguientes pasos de su separación o resolver cualquier consulta.`,
+        ``,
+        `Atentamente,`,
+        `*${advisorName}*`,
+        `_Valle Pacora - Roble Constructora_`
+      ].join('\n');
     }
 
+    let processed = rawText.replace(/de \*?Valle Pacora \/ Roble Constructora\*?/gi, 'de *Valle Pacora*');
+
+    if (!processed.includes('{financiamiento}') && !processed.includes('{detalles}') && !processed.includes('{modalidad}')) {
+      if (processed.includes('- *Monto Total:* {monto}')) {
+        processed = processed.replace('- *Monto Total:* {monto}', `- *Monto Total:* {monto}\n${financingLines}`);
+      } else if (processed.includes('{monto}')) {
+        processed = processed.replace('{monto}', `{monto}\n${financingLines}`);
+      } else {
+        processed = `${processed}\n${financingLines}`;
+      }
+    } else {
+      processed = processed
+        .replace(/{financiamiento}/g, financingLines)
+        .replace(/{detalles}/g, financingLines);
+    }
+
+    return processed
+      .replace(/{cliente}/g, clientName)
+      .replace(/{asesor}/g, advisorName)
+      .replace(/{codigo}/g, proforma.code)
+      .replace(/{propiedad}/g, propertyTitle)
+      .replace(/{monto}/g, totalFormatted)
+      .replace(/{inicial}/g, initialFormatted)
+      .replace(/{meses}/g, String(monthsNum))
+      .replace(/{cuota}/g, quotaFormatted);
+  };
+
+  const handleOpenWhatsApp = () => {
+    const rawText = getWhatsAppMessage();
     const message = encodeURIComponent(rawText);
     const cleanPhone = getWhatsAppCleanPhone(proforma.client?.phone);
     const waUrl = cleanPhone 
