@@ -4,17 +4,24 @@ import ProformaForm from '../components/proforma/ProformaForm';
 import LivePreviewA4 from '../components/proforma/LivePreviewA4';
 import ShareModal from '../components/proforma/ShareModal';
 import confetti from 'canvas-confetti';
+import { useGlobalContext } from '../context/GlobalContext';
+import { useNavigate } from 'react-router-dom';
+import { downloadProformaPdf } from '../utils/pdfGenerator';
 
-export default function CreateProforma({
-  proforma,
-  clients = [],
-  templates = [],
-  advisors = [],
-  onSave,
-  onBack,
-  properties = [],
-  onDownloadPdf
-}) {
+export default function CreateProforma() {
+  const {
+    selectedProforma: proforma,
+    clients = [],
+    templates = [],
+    advisors = [],
+    properties = [],
+    handleSaveProforma
+  } = useGlobalContext();
+  const navigate = useNavigate();
+
+  const onSave = handleSaveProforma;
+  const onBack = () => navigate(-1);
+
   const [formData, setFormData] = useState(proforma);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -24,8 +31,11 @@ export default function CreateProforma({
   React.useEffect(() => {
     if (proforma && typeof proforma === 'object') {
       setFormData(proforma);
+    } else {
+      // If no proforma selected, go back (e.g. user refreshed the page)
+      navigate('/');
     }
-  }, [proforma]);
+  }, [proforma, navigate]);
 
   // Property vinculada
   const selectedProperty = properties.find(p => p.id === formData.selectedPropertyId) || properties[0];
@@ -160,7 +170,7 @@ export default function CreateProforma({
 
             <button
               type="button"
-              onClick={() => onDownloadPdf(formData)}
+              onClick={() => downloadProformaPdf(formData)}
               className="border border-[#c7ecd5] bg-[#eef7f2] hover:bg-[#d8eedf] text-[#0e692e] font-medium px-2.5 sm:px-4 py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs"
             >
               <Download className="w-3.5 h-3.5 shrink-0" />
@@ -242,7 +252,7 @@ export default function CreateProforma({
           if (onBack) onBack();
         }}
         proforma={formData}
-        onDownloadPdf={onDownloadPdf}
+        onDownloadPdf={downloadProformaPdf}
       />
     </div>
   );

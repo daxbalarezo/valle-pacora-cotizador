@@ -3,8 +3,13 @@ import { storageService, COMPANY_INFO } from '../services/storageService';
 import { formatCurrency, formatDate, getWhatsAppCleanPhone } from '../utils/formatters';
 import { Download, MessageCircle, CheckCircle, Clock, ShieldCheck, Phone } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useParams } from 'react-router-dom';
+import { downloadProformaPdf } from '../utils/pdfGenerator';
 
-export default function PublicView({ token, onDownloadPdf }) {
+export default function PublicView() {
+  const { token: routeToken } = useParams();
+  const token = routeToken || 'cot-1044-janet';
+
   const [proforma, setProforma] = useState(null);
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);

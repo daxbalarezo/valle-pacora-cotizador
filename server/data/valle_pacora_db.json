@@ -292,9 +292,9 @@
       "ruc": "20611738022",
       "address": "Av. Victor Raul Haya de la Torre N° 127 Piso 2",
       "city": "Chiclayo, Perú",
-      "phone": "+51 944 189 501",
-      "email": "informes@robleagroinmobiliaria.com.pe",
-      "website": "www.vallepacora.com",
+      "phone": "+51 974 882 104",
+      "email": "ventas@robleconstructora.pe",
+      "website": "www.vallepacora.pe",
       "logoText": "Valle Pacora"
     },
     "bankAccounts": [
@@ -328,42 +328,100 @@
     ],
     "commercialDefaults": {
       "currency": "PEN",
-      "validDays": 7,
+      "validDays": 15,
       "separationAmount": 1000,
       "defaultNotes": "Forma de pago: S/ 1,000 de separación y 60% de inicial máximo en 15 días.\nTiempo de validez de la proforma 7 días calendarios.\nEntrega de puntos de riego tecnificado y título independizado en Sunarp."
     },
     "advisor": {
-      "name": "Daniel Balarezo",
+      "id": "advisor-1",
+      "active": true,
+      "updatedAt": "2026-09-08T17:43:56.705Z",
+      "email": "daniel.balarezo@vallepacora.pe",
+      "phone": "+51 936 897 318",
       "role": "Asesor Comercial Especializado",
-      "phone": "+51 987 654 321",
-      "email": "daniel.balarezo@vallepacora.pe"
+      "createdAt": "2026-09-08T17:28:33.693Z",
+      "name": "Daniel Balarezo",
+      "isDefault": true
     },
     "advisors": [
       {
         "id": "advisor-1",
-        "name": "Daniel Balarezo",
-        "role": "Asesor Comercial Especializado",
-        "phone": "+51 987 654 321",
+        "active": true,
+        "updatedAt": "2026-09-08T17:43:56.705Z",
         "email": "daniel.balarezo@vallepacora.pe",
+        "phone": "+51 936 897 318",
+        "role": "Asesor Comercial Especializado",
+        "createdAt": "2026-09-08T17:28:33.693Z",
+        "name": "Daniel Balarezo",
         "isDefault": true
       },
       {
-        "id": "advisor-1788815977987",
-        "name": "Cesar Alvarado",
+        "id": "advisor-1788889183623",
         "role": "Asesor Comercial Especializado",
+        "updatedAt": "2026-09-08T17:43:59.625Z",
+        "name": "Maite Rondoy",
+        "phone": "+51 908 925 210",
+        "email": "",
+        "active": true,
+        "isDefault": false,
+        "createdAt": "2026-09-08T17:43:59.625Z"
+      },
+      {
+        "id": "advisor-1788889217168",
+        "role": "Asesor Comercial Especializado",
+        "updatedAt": "2026-09-08T17:43:59.960Z",
         "phone": "+51 908 925 216",
-        "email": "asesor2@vallepacora.pe",
+        "name": "Cesar Alvarado",
+        "email": "",
+        "active": true,
+        "createdAt": "2026-09-08T17:43:59.960Z",
         "isDefault": false
       },
       {
-        "id": "advisor-1788822627990",
-        "name": "Maite Rondoy",
-        "role": "Asesora Comercial Especializado",
-        "phone": "+51 908 925 210",
+        "id": "advisor-1788889243743",
+        "isDefault": false,
+        "active": true,
+        "createdAt": "2026-09-08T17:44:00.294Z",
         "email": "",
-        "isDefault": false
+        "role": "Asesor Comercial Especializado",
+        "phone": "+51 987 229 465",
+        "name": "Ricardo Antenor",
+        "updatedAt": "2026-09-08T17:44:00.294Z"
+      },
+      {
+        "id": "advisor-1788889301712",
+        "createdAt": "2026-09-08T17:44:00.723Z",
+        "active": true,
+        "isDefault": false,
+        "email": "",
+        "role": "Asesor Comercial Especializado",
+        "updatedAt": "2026-09-08T17:44:00.723Z",
+        "phone": "+51 908 925 243",
+        "name": "Joanna Gonzales"
+      },
+      {
+        "id": "advisor-1788889347863",
+        "isDefault": false,
+        "createdAt": "2026-09-08T17:44:01.931Z",
+        "active": true,
+        "email": "",
+        "phone": "+51 908 925 234",
+        "role": "Asesor Comercial Especializado",
+        "updatedAt": "2026-09-08T17:44:01.931Z",
+        "name": "Saulo Yunis"
+      },
+      {
+        "id": "advisor-1788889373704",
+        "createdAt": "2026-09-08T17:44:02.310Z",
+        "active": true,
+        "isDefault": false,
+        "phone": "+51 908 925 252",
+        "updatedAt": "2026-09-08T17:44:02.310Z",
+        "email": "",
+        "name": "Victor Ramos",
+        "role": "Asesor Comercial Especializado"
       }
     ],
-    "whatsappMessageTemplate": "Hola *{cliente}*, le saluda *{asesor}* de *Valle Pacora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n- *Proforma:* {codigo}\n- *Proyecto:* {propiedad}\n- *Monto Total:* {monto}\n{financiamiento}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación o atender cualquier consulta.\n\nAtentamente,\n*{asesor}*\n_Valle Pacora - Roble Constructora_"
+    "whatsappMessageTemplate": "Hola *{cliente}*, le saluda *{asesor}* de *Valle Pacora / Roble Constructora*.\n\nLe comparto los detalles de su cotización formal correspondiente a su consulta:\n\n- *Proforma:* {codigo}\n- *Proyecto:* {propiedad}\n- *Monto Total:* {monto}\n{financiamiento}\n\nQuedo a su disposición para coordinar los siguientes pasos de su separación o atender cualquier consulta.\n\nAtentamente,\n*{asesor}*\n_Valle Pacora - Roble Constructora_"
   }
 }

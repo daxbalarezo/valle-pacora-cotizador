@@ -3,6 +3,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 import { COMPANY_INFO } from '../../services/storageService';
 import { Layers, FileText, ShieldCheck, MapPin, Building2 } from 'lucide-react';
 import { MEMBRETE_OFICIAL_BG } from '../../assets/membreteBase64';
+import { getPaltaProjection, getArandanoProjection } from '../../utils/profitabilityCalc';
 
 export default function LivePreviewA4({ proforma, property }) {
   const [activePreviewPage, setActivePreviewPage] = useState(1);
@@ -47,7 +48,8 @@ export default function LivePreviewA4({ proforma, property }) {
   const initialPayment = conditions.initialPayment !== undefined ? Number(conditions.initialPayment) : defaultInitial;
   const reservation = conditions.reservation !== undefined ? Number(conditions.reservation) : 1000;
   const months = conditions.months !== undefined ? Number(conditions.months) : 24;
-  const balance = Math.max(0, totalAmount - initialPayment);
+  const hasHarvestBonus = conditions.hasHarvestBonus || false;
+  const balance = Math.max(0, totalAmount - initialPayment - (hasHarvestBonus ? 10000 : 0));
   const monthlyInstallment = months > 0 ? balance / months : 0;
 
   const isArandano = Boolean(
@@ -61,6 +63,9 @@ export default function LivePreviewA4({ proforma, property }) {
   const cropImageUrl = isArandano ? "/arandano_field.jpg" : (property?.planImageUrl || "/palta_hass_field.jpg");
   const cropName = isArandano ? "Arándanos" : "Palta Hass";
   const cropTitle = isArandano ? "Parcela Agrícola - Arándanos (1,000 m²)" : "Parcela Agrícola - Palta Hass (1,000 m²)";
+
+  const quantity = proforma.items?.[0]?.quantity || 1;
+  const profData = isArandano ? getArandanoProjection(quantity) : getPaltaProjection(quantity);
 
   return (
     <div ref={containerRef} className="flex flex-col items-center w-full">
@@ -242,18 +247,18 @@ export default function LivePreviewA4({ proforma, property }) {
                       ? 'Pago al Contado con Descuento Inmediato' 
                       : `Financiamiento Directo (${months} Cuotas)`}
                   </h4>
-                  <p className="text-[9.5px] text-slate-600 mt-1 leading-relaxed">
+                  <p className="text-[9.5px] text-slate-600 mt-1 leading-relaxed whitespace-pre-wrap">
                     {paymentType === 'contado'
-                      ? `Separación: ${formatCurrency(reservation, proforma.currency)} | Saldo restante se completara en 7 dias calendario.`
-                      : `Inicial: ${formatCurrency(initialPayment, proforma.currency)} | Cuota: ${formatCurrency(monthlyInstallment, proforma.currency)}/mes (sin bancos).`}
+                      ? `Separación: ${formatCurrency(reservation, proforma.currency)}\nSaldo restante se completara en 7 dias calendario.`
+                      : `Pago Inicial: ${formatCurrency(initialPayment, proforma.currency)} (financiamiento directo sin bancos).\n${proforma.conditions?.hasHarvestBonus ? `Pago en Cosecha: S/ 10,000 en 3er año.` : ''}`}
                   </p>
                 </div>
 
                 <div className="col-span-5 bg-slate-50 border border-slate-200 rounded-lg p-2.5 space-y-1.5">
                   <div className="flex justify-between text-[10px] text-slate-600">
-                    <span>Subtotal:</span>
+                    <span>Precio Total:</span>
                     <span className="font-semibold text-slate-800 tabular-nums">
-                      {formatCurrency(proforma.subtotal, proforma.currency)}
+                      {formatCurrency(proforma.total, proforma.currency)}
                     </span>
                   </div>
 
@@ -264,21 +269,49 @@ export default function LivePreviewA4({ proforma, property }) {
                     </div>
                   )}
 
-                  {proforma.tax > 0 && (
-                    <div className="flex justify-between text-[10px] text-slate-600">
-                      <span>IGV (18%):</span>
-                      <span className="font-semibold text-slate-800 tabular-nums">
-                        {formatCurrency(proforma.tax, proforma.currency)}
+                  {paymentType === 'financiado' && (
+                    <>
+                      <div className="flex justify-between text-[10px] text-slate-600">
+                        <span>Pago Inicial:</span>
+                        <span className="text-slate-800 tabular-nums">
+                          -{formatCurrency(initialPayment, proforma.currency)}
+                        </span>
+                      </div>
+                      
+                      {proforma.conditions?.hasHarvestBonus && (
+                        <div className="flex justify-between text-[10px] text-slate-600">
+                          <span>Pago en Cosecha:</span>
+                          <span className="text-slate-800 tabular-nums">
+                            -{formatCurrency(10000, proforma.currency)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="border-t-2 border-[#0e692e] pt-2 mt-1 flex flex-col gap-1.5">
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-[9px] font-bold text-slate-600 uppercase">Saldo a Financiar:</span>
+                          <span className="text-[11px] font-bold text-slate-800 tabular-nums">
+                            {formatCurrency(balance, proforma.currency)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-baseline bg-[#eef7f2] px-1.5 py-1 rounded">
+                          <span className="text-[10px] font-extrabold text-[#0e692e] uppercase">{months} CUOTAS DE:</span>
+                          <span className="text-sm font-display font-extrabold text-[#0e692e] tabular-nums">
+                            {formatCurrency(monthlyInstallment, proforma.currency)}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {paymentType === 'contado' && (
+                    <div className="border-t-2 border-[#0e692e] pt-1.5 flex justify-between items-baseline">
+                      <span className="text-[10px] font-extrabold text-slate-900">INVERSIÓN TOTAL:</span>
+                      <span className="text-sm font-display font-extrabold text-[#0e692e] tabular-nums">
+                        {formatCurrency(Math.max(0, proforma.total - proforma.totalDiscount), proforma.currency)}
                       </span>
                     </div>
                   )}
-
-                  <div className="border-t-2 border-[#0e692e] pt-1.5 flex justify-between items-baseline">
-                    <span className="text-[10px] font-extrabold text-slate-900">INVERSIÓN:</span>
-                    <span className="text-sm font-display font-extrabold text-[#0e692e] tabular-nums">
-                      {formatCurrency(proforma.total, proforma.currency)}
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -371,52 +404,55 @@ export default function LivePreviewA4({ proforma, property }) {
                 </div>
               </div>
 
-              {/* Agricultural Crop Image Box (Sin texto negro superpuesto) */}
-              <div className="border border-slate-300 rounded-lg overflow-hidden bg-slate-100 relative h-36">
-                <img 
-                  src={cropImageUrl}
-                  alt={cropName}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              {/* CONDICIONES Y MODALIDAD DE PAGO EN HOJA 2 (IDÉNTICO A CAPTURA USUARIO) */}
-              <div className="bg-[#F8FAFC] border border-slate-200 rounded-xl p-3 shadow-xs">
-                <p className="text-[9.5px] font-bold text-[#0e692e] uppercase tracking-wider mb-1.5">
-                  CONDICIONES:
-                </p>
-                {paymentType === 'financiado' ? (
-                  <div className="space-y-0.5 text-[9px] text-slate-700 leading-snug">
-                    <p>
-                      Modalidad: <span className="font-semibold">Financiado ({formatCurrency(totalAmount, proforma.currency).replace('.00', '')})</span>.
-                    </p>
-                    <p>
-                      Separación: <span className="font-semibold">{formatCurrency(reservation, proforma.currency).replace('.00', '')}</span>.
-                    </p>
-                    <p>
-                      Inicial: <span className="font-semibold">{formatCurrency(initialPayment, proforma.currency).replace('.00', '')}</span> en 15 días.
-                    </p>
-                    <p>
-                      Saldo: <span className="font-semibold">{formatCurrency(balance, proforma.currency).replace('.00', '')}</span> financiado en cuotas directas sin bancos.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-0.5 text-[9px] text-slate-700 leading-snug">
-                    <p>
-                      Modalidad: <span className="font-semibold">Pago al Contado ({formatCurrency(totalAmount, proforma.currency).replace('.00', '')})</span>.
-                    </p>
-                    <p>
-                      Separación: <span className="font-semibold">{formatCurrency(reservation, proforma.currency).replace('.00', '')}</span>.
-                    </p>
-                    <p>
-                      Saldo: <span className="font-semibold">{formatCurrency(Math.max(0, totalAmount - reservation), proforma.currency).replace('.00', '')}</span> contra firma de contrato y minuta en notaría.
-                    </p>
-                  </div>
-                )}
+              {/* Tabla de Rentabilidad Proyectada */}
+              <div className="border border-[#166534] rounded-lg overflow-hidden mt-1">
+                <table className="w-full text-left text-[9px]">
+                  <thead className="bg-[#166534] text-white font-bold">
+                    <tr>
+                      <th className="py-1.5 px-2.5 w-[15%]">Año</th>
+                      <th className="py-1.5 px-2 w-[37%]">Cosecha (kg)</th>
+                      <th className="py-1.5 px-2 w-[16%] text-right">Ingreso Bruto</th>
+                      <th className="py-1.5 px-2 w-[16%] text-right">Costos</th>
+                      <th className="py-1.5 px-2.5 w-[16%] text-right">Utilidad Neta</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {profData.rows.map((row, idx) => (
+                      <tr key={idx} className={idx % 2 !== 0 ? 'bg-slate-50' : 'bg-white'}>
+                        <td className="py-1.5 px-2.5 text-slate-900 font-bold leading-tight">
+                          {row.period}
+                          {row.badge && <span className="block text-[7.5px] text-[#166534] mt-0.5">{row.badge}</span>}
+                        </td>
+                        
+                        {row.isInvestment ? (
+                          <td colSpan="4" className="py-1.5 px-2 text-slate-500 italic text-[8.5px]">
+                            {row.label}
+                          </td>
+                        ) : (
+                          <>
+                            <td className="py-1.5 px-2 text-slate-600 font-medium">{row.production}</td>
+                            <td className="py-1.5 px-2 text-slate-600 text-right tabular-nums">{formatCurrency(row.revenue, proforma.currency)}</td>
+                            <td className="py-1.5 px-2 text-slate-600 text-right tabular-nums">{formatCurrency(row.costs, proforma.currency)}</td>
+                            <td className="py-1.5 px-2.5 text-[#166534] font-bold text-right tabular-nums">{formatCurrency(row.profit, proforma.currency)}</td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-[#f0fdf4] border-t-2 border-[#166534]">
+                    <tr>
+                      <td className="py-2 px-2.5 text-[#166534] font-bold">TOTAL ({profData.totalYears} años)</td>
+                      <td className="py-2 px-2 text-slate-400">--</td>
+                      <td className="py-2 px-2 text-[#166534] font-bold text-right tabular-nums">{formatCurrency(profData.totalRevenue, proforma.currency)}</td>
+                      <td className="py-2 px-2 text-slate-400 text-right">--</td>
+                      <td className="py-2 px-2.5 text-[#166534] font-bold text-right tabular-nums text-[10px]">{formatCurrency(profData.totalProfit, proforma.currency)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
 
               {/* Amenities List */}
-              <div>
+              <div className="mt-3">
                 <h4 className="text-[8.5px] font-bold text-slate-900 uppercase tracking-wider mb-1">
                   Especificaciones Agronómicas y Garantías Legales:
                 </h4>
@@ -428,10 +464,12 @@ export default function LivePreviewA4({ proforma, property }) {
                     "Factibilidad de energía eléctrica y servicios",
                     "Alta plusvalía garantizada por corredor agroindustrial",
                     "Suelo agrícola de primera calidad y clima óptimo"
-                  ]).map((amenity, idx) => (
+                  ])
+                  .filter(amenity => !amenity.toLowerCase().includes('financiado') && !amenity.toLowerCase().includes('contado'))
+                  .map((amenity, idx) => (
                     <div key={idx} className="flex items-center gap-1.5 text-[8.5px] text-slate-700 bg-[#F8FAFC] border border-slate-200 px-2 py-0.5 rounded">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#059669] shrink-0"></div>
-                      <span className="truncate">{amenity}</span>
+                      <span className="truncate">{amenity.replace(/Palta Hass/gi, cropName)}</span>
                     </div>
                   ))}
                 </div>

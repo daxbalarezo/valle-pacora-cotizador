@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import Sidebar from '../components/layout/Sidebar';
 import ClientModal from '../components/clients/ClientModal';
 import ClientDetailDrawer from '../components/clients/ClientDetailDrawer';
 import { 
@@ -17,25 +16,104 @@ import {
   Building2,
   UserCheck
 } from 'lucide-react';
-import { formatCurrency, getWhatsAppCleanPhone } from '../utils/formatters';
+import { formatCurrency, getWhatsAppCleanPhone, generateToken } from '../utils/formatters';
+import { useGlobalContext } from '../context/GlobalContext';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { downloadProformaPdf } from '../utils/pdfGenerator';
 
-export default function Clients({
-  clients = [],
-  proformas = [],
-  onNewClient,
-  onEditClient,
-  onDeleteClient,
-  onQuoteForClient,
-  onNavigateTab,
-  onNewProforma,
-  properties = [],
-  onDownloadPdf
-}) {
+export default function Clients() {
+  const {
+    clients = [],
+    proformas = [],
+    properties = [],
+    handleNewClient,
+    handleEditClient,
+    handleDeleteClient,
+    setSelectedProforma,
+    advisors = [],
+    config
+  } = useGlobalContext();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'cotizados'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [selectedDrawerClient, setSelectedDrawerClient] = useState(null);
+
+  const onQuoteForClient = (client) => {
+    const activeAdvisors = (advisors && advisors.length > 0) ? advisors : [];
+    const defaultAdvisor = activeAdvisors.find(a => a.isDefault) || activeAdvisors[0] || {
+      id: 'advisor-1',
+      name: user?.name || config?.advisor?.name || 'Daniel Balarezo',
+      phone: user?.phone || config?.advisor?.phone || '+51 987 654 321',
+      role: user?.role || config?.advisor?.role || 'Asesor Comercial Especializado',
+      email: user?.email || config?.advisor?.email || 'daniel.balarezo@vallepacora.pe'
+    };
+
+    const maxCode = (proformas || []).reduce((max, p) => {
+      const match = p.code?.match(/\d+/);
+      const num = match ? parseInt(match[0], 10) : 1000;
+      return num > max ? num : max;
+    }, 1000);
+    const nextCodeNumber = maxCode + 1;
+    const initialProperty = properties[0];
+
+    const newProforma = {
+      id: `cot-${nextCodeNumber}`,
+      code: `#COT-${nextCodeNumber}`,
+      advisorId: defaultAdvisor.id || 'advisor-1',
+      advisorName: defaultAdvisor.name || 'Daniel Balarezo',
+      advisorPhone: defaultAdvisor.phone || '+51 987 654 321',
+      advisorRole: defaultAdvisor.role || 'Asesor Comercial Especializado',
+      advisorEmail: defaultAdvisor.email || 'daniel.balarezo@vallepacora.pe',
+      status: 'borrador',
+      currency: 'PEN',
+      createdAt: new Date().toISOString(),
+      formattedDate: new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }),
+      client: {
+        name: client.name,
+        docType: client.docType || 'DNI',
+        docNumber: client.docNumber || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        validDays: '7 días hábiles'
+      },
+      items: [
+        {
+          id: `item-${Date.now()}`,
+          description: client.interestProject || initialProperty?.title || 'Parcela Agrícola - Palta Hass (1,000 m²)',
+          quantity: 1,
+          unitPrice: client.budget || initialProperty?.basePrice || 60000.00,
+          discount: 0,
+          total: client.budget || initialProperty?.basePrice || 60000.00
+        }
+      ],
+      includeFloorPlan: Boolean(initialProperty?.planImageUrl),
+      selectedPropertyId: initialProperty?.id || 'parcela-palta-1000',
+      subtotal: client.budget || 60000.00,
+      totalDiscount: 0,
+      tax: 0,
+      total: client.budget || 60000.00,
+      conditions: {
+        validDays: 7,
+        paymentType: 'financiado',
+        reservation: 1000,
+        initialPayment: 20000,
+        balance: 40000,
+        months: 24,
+        monthlyInstallment: 1666.67,
+        paymentMethod: 'Financiamiento Directo / Separación con S/ 1,000',
+        notes: client.notes ? `Notas cliente: ${client.notes}\nForma de pago: S/ 1,000 de separación.` : 'Modalidad: Financiado (S/ 60,000).\nSeparación: S/ 1,000.\nInicial: S/ 20,000 en 15 días.\nSaldo: S/ 40,000 financiado en cuotas directas sin bancos.'
+      },
+      publicToken: generateToken()
+    };
+
+    setSelectedProforma(newProforma);
+    navigate('/crear');
+  };
 
   // Calcular proformas por cliente
   const getClientProformasData = (client) => {
@@ -71,6 +149,18 @@ export default function Clients({
     });
   }, [clients, proformas, searchQuery, filterStatus]);
 
+  // Pagination state
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  // Reset page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredClients]);
+
+  const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
+  const paginatedClients = filteredClients.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   // Métricas simplificadas para el cotizador
   const metrics = useMemo(() => {
     const totalCount = clients.length;
@@ -97,9 +187,9 @@ export default function Clients({
 
   const handleSaveClientModal = async (clientData) => {
     if (editingClient) {
-      await onEditClient(clientData);
+      await handleEditClient(clientData);
     } else {
-      await onNewClient(clientData);
+      await handleNewClient(clientData);
     }
     setIsModalOpen(false);
     setEditingClient(null);
@@ -140,16 +230,9 @@ export default function Clients({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col md:flex-row">
-      {/* Sidebar Izquierdo */}
-      <Sidebar 
-        currentTab="clientes" 
-        onSelectTab={onNavigateTab} 
-        onNewProforma={onNewProforma} 
-      />
-
+    <div className="w-full">
       {/* Contenido Principal */}
-      <main className="flex-1 p-4 sm:p-6 md:p-8 lg:p-10 overflow-y-auto w-full max-w-7xl mx-auto">
+      <div className="w-full">
         {/* Top Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
@@ -290,7 +373,7 @@ export default function Clients({
                     </td>
                   </tr>
                 ) : (
-                  filteredClients.map((client) => {
+                  paginatedClients.map((client) => {
                     const quotesData = getClientProformasData(client);
                     return (
                       <tr 
@@ -436,7 +519,7 @@ export default function Clients({
                 No se encontraron clientes con los filtros seleccionados.
               </div>
             ) : (
-              filteredClients.map((client) => {
+              paginatedClients.map((client) => {
                 const quotesData = getClientProformasData(client);
                 return (
                   <div 
@@ -523,8 +606,51 @@ export default function Clients({
               })
             )}
           </div>
+
+          {/* ================= PAGINATION CONTROLS ================= */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-slate-100 bg-white gap-4">
+              <span className="text-xs text-slate-500 font-medium">
+                Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, filteredClients.length)} de {filteredClients.length} clientes
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                >
+                  Anterior
+                </button>
+                <div className="flex items-center gap-1 overflow-x-auto max-w-[150px] sm:max-w-none scrollbar-hide">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`shrink-0 w-7 h-7 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center ${
+                        currentPage === page 
+                          ? 'bg-[#0e692e] text-white' 
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      </main>
+      </div>
 
       {/* Modal Crear / Editar Cliente */}
       <ClientModal
@@ -552,7 +678,7 @@ export default function Clients({
           setSelectedDrawerClient(null);
           handleOpenEditModal(c);
         }}
-        onDownloadPdf={onDownloadPdf}
+        onDownloadPdf={downloadProformaPdf}
       />
     </div>
   );

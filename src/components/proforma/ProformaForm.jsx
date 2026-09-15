@@ -156,7 +156,8 @@ export default function ProformaForm({
   const initialPayment = conditions.initialPayment !== undefined ? Number(conditions.initialPayment) : defaultInitial;
   const reservation = conditions.reservation !== undefined ? Number(conditions.reservation) : 1000;
   const months = conditions.months !== undefined ? Number(conditions.months) : 24;
-  const balance = Math.max(0, totalAmount - initialPayment);
+  const hasHarvestBonus = conditions.hasHarvestBonus || false;
+  const balance = Math.max(0, totalAmount - initialPayment - (hasHarvestBonus ? 10000 : 0));
   const monthlyInstallment = months > 0 ? balance / months : 0;
 
   // Identificador de la plantilla activa
@@ -248,8 +249,10 @@ export default function ProformaForm({
     const nextReservation = overrides.reservation !== undefined ? Number(overrides.reservation) : reservation;
     const nextInitial = overrides.initialPayment !== undefined ? Number(overrides.initialPayment) : initialPayment;
     const nextMonths = overrides.months !== undefined ? Number(overrides.months) : months;
+    const nextHarvestBonus = overrides.hasHarvestBonus !== undefined ? overrides.hasHarvestBonus : (proforma.conditions?.hasHarvestBonus || false);
 
-    const nextBalance = Math.max(0, totalAmount - nextInitial);
+    const bonusAmount = nextHarvestBonus ? 10000 : 0;
+    const nextBalance = Math.max(0, totalAmount - nextInitial - bonusAmount);
     const nextInstallment = nextMonths > 0 ? nextBalance / nextMonths : 0;
 
     const formattedInstallment = formatCurrency(nextInstallment, proforma.currency).replace('.00', '');
@@ -260,7 +263,7 @@ export default function ProformaForm({
 
     const generatedNotes = paymentType === 'contado'
       ? `Modalidad: Pago al Contado (${formattedTotal}).\nSeparación: ${formattedReservation}.\nSaldo: ${formatCurrency(Math.max(0, totalAmount - nextReservation), proforma.currency).replace('.00', '')} contra firma de contrato y minuta en notaría.`
-      : `Modalidad: Financiado (${formattedTotal}).\nSeparación: ${formattedReservation}.\nInicial: ${formattedInitial} en 15 días.\nSaldo: ${formattedBalance} financiado en cuotas directas sin bancos.`;
+      : `Modalidad: Financiado (${formattedTotal}).\nSeparación: ${formattedReservation}.\nInicial: ${formattedInitial} en 15 días.\nSaldo: ${formattedBalance} financiado en cuotas directas sin bancos.${nextHarvestBonus ? '\nPago en Cosecha: S/ 10,000 en el 3er año (Descontado del saldo a financiar).' : ''}`;
 
     onChange({
       ...proforma,
@@ -272,6 +275,7 @@ export default function ProformaForm({
         balance: nextBalance,
         months: nextMonths,
         monthlyInstallment: nextInstallment,
+        hasHarvestBonus: nextHarvestBonus,
         notes: overrides.notes !== undefined ? overrides.notes : generatedNotes
       }
     });
@@ -1069,6 +1073,38 @@ export default function ProformaForm({
                   </button>
                 )}
               </div>
+
+              {/* INTERRUPTOR BONO COSECHA (SOLO FINANCIADO) */}
+              {paymentType === 'financiado' && (
+                <div className="flex items-center gap-2.5 pt-2.5 mt-2.5 border-t border-slate-200/60">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={conditions.hasHarvestBonus || false}
+                    onClick={() => updateFinancing({ hasHarvestBonus: !(conditions.hasHarvestBonus || false) })}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      conditions.hasHarvestBonus ? 'bg-[#0e692e]' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        conditions.hasHarvestBonus ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <span 
+                    onClick={() => updateFinancing({ hasHarvestBonus: !(conditions.hasHarvestBonus || false) })}
+                    className="text-xs font-semibold text-slate-700 cursor-pointer select-none flex items-center gap-1.5"
+                  >
+                    <span>Aplicar Pago en Cosecha (S/ 10,000 descontado en el 3er año)</span>
+                    {conditions.hasHarvestBonus && (
+                      <span className="text-[10.5px] text-[#0e692e] font-bold bg-[#eef7f2] px-2 py-0.5 rounded-full">
+                        Activo
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )}
 
               {/* PANEL FUSIONADO DE PERSONALIZACIÓN DE MONTOS (SOLO VISIBLE SI EL INTERRUPTOR ESTÁ ACTIVO) */}
               {showCustomAmounts && (

@@ -27,6 +27,18 @@ export default function ProformaTable({
   // Estado para el menú flotante con coordenadas fijas (desvinculado del overflow de la tabla)
   const [activeMenu, setActiveMenu] = useState(null);
 
+  // Pagination state
+  const ITEMS_PER_PAGE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when proformas change (e.g. search)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [proformas]);
+
+  const totalPages = Math.ceil(proformas.length / ITEMS_PER_PAGE);
+  const paginatedProformas = proformas.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   // Cerrar el menú si el usuario hace scroll o cambia el tamaño de la ventana
   useEffect(() => {
     if (!activeMenu) return;
@@ -134,7 +146,7 @@ export default function ProformaTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {proformas.map((p) => {
+              {paginatedProformas.map((p) => {
                 const clientName = p.client?.name?.trim() || 'Cliente Particular';
                 const advisorName = p.advisorName?.trim() || 'Daniel Balarezo';
                 const isCurrentMenuOpen = activeMenu?.id === p.id;
@@ -236,7 +248,7 @@ export default function ProformaTable({
 
         {/* ================= VISTA MÓVIL (< md) ================= */}
         <div className="md:hidden divide-y divide-slate-100">
-          {proformas.map((p) => {
+          {paginatedProformas.map((p) => {
             const clientName = p.client?.name?.trim() || 'Cliente Particular';
             const advisorName = p.advisorName?.trim() || 'Daniel Balarezo';
             const isCurrentMenuOpen = activeMenu?.id === p.id;
@@ -305,6 +317,49 @@ export default function ProformaTable({
             );
           })}
         </div>
+        
+        {/* ================= PAGINATION CONTROLS ================= */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl gap-4">
+            <span className="text-xs text-slate-500 font-medium">
+              Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, proformas.length)} de {proformas.length} proformas
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+              >
+                Anterior
+              </button>
+              <div className="flex items-center gap-1 overflow-x-auto max-w-[150px] sm:max-w-none scrollbar-hide">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`shrink-0 w-7 h-7 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center ${
+                      currentPage === page 
+                        ? 'bg-[#0e692e] text-white' 
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* MENÚ FLOTANTE FIJO (POSITION FIXED): TOTALMENTE LIBRE DE RECORTES DE OVERFLOW */}

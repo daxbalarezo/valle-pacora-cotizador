@@ -11,6 +11,7 @@ import { COMPANY_INFO } from '../../services/storageService';
 import { MEMBRETE_OFICIAL_BG } from '../../assets/membreteBase64';
 import { LOGO_VALLE_PACORA } from '../../assets/logoBase64';
 import { PALTA_HASS_IMAGE, ARANDANO_IMAGE } from '../../assets/cropImagesBase64';
+import { getPaltaProjection, getArandanoProjection } from '../../utils/profitabilityCalc';
 
 const styles = StyleSheet.create({
   page: {
@@ -477,6 +478,62 @@ const styles = StyleSheet.create({
     color: '#334155',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  profTableContainer: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#166534',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  profHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#166534',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  profTh: {
+    fontSize: 7.5,
+    fontFamily: 'Helvetica-Bold',
+    color: '#ffffff',
+  },
+  profRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  profRowTotal: {
+    backgroundColor: '#f0fdf4',
+    borderTopWidth: 1.5,
+    borderTopColor: '#166534',
+  },
+  profTdYear: {
+    width: '15%',
+    fontSize: 7.5,
+    color: '#1e293b',
+    fontFamily: 'Helvetica-Bold',
+  },
+  profTdProd: {
+    width: '37%',
+    fontSize: 7.5,
+    color: '#475569',
+  },
+  profTdNum: {
+    width: '16%',
+    fontSize: 7.5,
+    textAlign: 'right',
+    color: '#475569',
+  },
+  profTdProfit: {
+    width: '16%',
+    fontSize: 7.5,
+    textAlign: 'right',
+    color: '#166534',
+    fontFamily: 'Helvetica-Bold',
   }
 });
 
@@ -508,7 +565,8 @@ export default function ExecutivePDFDocument({ proforma = {}, property = {} }) {
   const initialPayment = conditions.initialPayment !== undefined ? Number(conditions.initialPayment) : defaultInitial;
   const reservation = conditions.reservation !== undefined ? Number(conditions.reservation) : 1000;
   const months = conditions.months !== undefined ? Number(conditions.months) : 24;
-  const balance = Math.max(0, totalAmount - initialPayment);
+  const hasHarvestBonus = conditions.hasHarvestBonus || false;
+  const balance = Math.max(0, totalAmount - initialPayment - (hasHarvestBonus ? 10000 : 0));
   const monthlyInstallment = months > 0 ? balance / months : 0;
 
   const isArandano = Boolean(
@@ -522,6 +580,9 @@ export default function ExecutivePDFDocument({ proforma = {}, property = {} }) {
   const cropImageSrc = isArandano ? ARANDANO_IMAGE : PALTA_HASS_IMAGE;
   const cropName = isArandano ? "Arándanos" : "Palta Hass";
   const cropTitle = isArandano ? "Parcela Agrícola - Arándanos" : "Parcela Agrícola - Palta Hass";
+
+  const quantity = proforma.items?.[0]?.quantity || 1;
+  const profData = isArandano ? getArandanoProjection(quantity) : getPaltaProjection(quantity);
 
   return (
     <Document
@@ -607,15 +668,15 @@ export default function ExecutivePDFDocument({ proforma = {}, property = {} }) {
               </Text>
               <Text style={styles.conditionsText}>
                 {paymentType === 'contado'
-                  ? `Separación: ${formatMoney(reservation, currency)} | Saldo restante se completara en 7 dias calendario.`
-                  : `Inicial: ${formatMoney(initialPayment, currency)} | Cuota: ${formatMoney(monthlyInstallment, currency)}/mes (sin bancos).`}
+                  ? `Separación: ${formatMoney(reservation, currency)}\nSaldo restante se completara en 7 dias calendario.`
+                  : `Pago Inicial: ${formatMoney(initialPayment, currency)} (financiamiento directo sin bancos).\n${proforma.conditions?.hasHarvestBonus ? `Pago en Cosecha: S/ 10,000 en 3er año.` : ''}`}
               </Text>
             </View>
 
             <View style={styles.totalsBox}>
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Subtotal:</Text>
-                <Text style={styles.totalVal}>{formatMoney(proforma.subtotal, currency)}</Text>
+                <Text style={styles.totalLabel}>Precio Total:</Text>
+                <Text style={styles.totalVal}>{formatMoney(proforma.total, currency)}</Text>
               </View>
 
               {proforma.totalDiscount > 0 && (
@@ -625,17 +686,39 @@ export default function ExecutivePDFDocument({ proforma = {}, property = {} }) {
                 </View>
               )}
 
-              {proforma.tax > 0 && (
+              {paymentType === 'financiado' && (
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>IGV (18%):</Text>
-                  <Text style={styles.totalVal}>{formatMoney(proforma.tax, currency)}</Text>
+                  <Text style={styles.totalLabel}>Pago Inicial:</Text>
+                  <Text style={styles.totalVal}>-{formatMoney(initialPayment, currency)}</Text>
                 </View>
               )}
 
-              <View style={styles.finalInvestmentBox}>
-                <Text style={styles.finalLabel}>INVERSIÓN:</Text>
-                <Text style={styles.finalValue}>{formatMoney(proforma.total, currency)}</Text>
-              </View>
+              {paymentType === 'financiado' && proforma.conditions?.hasHarvestBonus && (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Pago en Cosecha:</Text>
+                  <Text style={styles.totalVal}>-{formatMoney(10000, currency)}</Text>
+                </View>
+              )}
+
+              {paymentType === 'financiado' && (
+                <View style={{ borderTopWidth: 2, borderTopColor: '#0e692e', paddingTop: 6, marginTop: 4 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#475569' }}>SALDO A FINANCIAR:</Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#1e293b' }}>{formatMoney(balance, currency)}</Text>
+                  </View>
+                  <View style={{ backgroundColor: '#EEF7F2', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 5, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#0e692e' }}>{months} CUOTAS DE:</Text>
+                    <Text style={{ fontSize: 11.5, fontFamily: 'Helvetica-Bold', color: '#0e692e' }}>{formatMoney(monthlyInstallment, currency)}</Text>
+                  </View>
+                </View>
+              )}
+
+              {paymentType === 'contado' && (
+                <View style={styles.finalInvestmentBox}>
+                  <Text style={styles.finalLabel}>INVERSIÓN TOTAL:</Text>
+                  <Text style={styles.finalValue}>{formatMoney(Math.max(0, proforma.total - proforma.totalDiscount), currency)}</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -711,49 +794,48 @@ export default function ExecutivePDFDocument({ proforma = {}, property = {} }) {
               </View>
             </View>
 
-            {/* Imagen Central del Cultivo / Parcela (Sin texto negro superpuesto) */}
-            <View style={styles.planImageBox}>
-              <Image
-                src={cropImageSrc}
-                style={styles.planImage}
-              />
-            </View>
+            {/* Tabla de Rentabilidad Proyectada */}
+            <View style={styles.profTableContainer}>
+              <View style={styles.profHeader}>
+                <Text style={[styles.profTh, { width: '15%' }]}>Año</Text>
+                <Text style={[styles.profTh, { width: '37%' }]}>Cosecha (kg)</Text>
+                <Text style={[styles.profTh, { width: '16%', textAlign: 'right' }]}>Ingreso Bruto</Text>
+                <Text style={[styles.profTh, { width: '16%', textAlign: 'right' }]}>Costos</Text>
+                <Text style={[styles.profTh, { width: '16%', textAlign: 'right' }]}>Utilidad Neta</Text>
+              </View>
 
-            {/* CONDICIONES EN HOJA 2 */}
-            <View style={styles.p2ConditionsBox}>
-              <Text style={styles.p2ConditionsTitle}>CONDICIONES:</Text>
-              {paymentType === 'financiado' ? (
-                <View>
-                  <Text style={styles.p2ConditionsItem}>
-                    • Modalidad: Financiado ({formatMoney(totalAmount, currency).replace('.00', '')}).
+              {profData.rows.map((row, idx) => (
+                <View key={idx} style={[styles.profRow, idx % 2 !== 0 && { backgroundColor: '#f8fafc' }]}>
+                  <Text style={styles.profTdYear}>
+                    {row.period} 
+                    {row.badge && `\n(${row.badge})`}
                   </Text>
-                  <Text style={styles.p2ConditionsItem}>
-                    • Separación: {formatMoney(reservation, currency).replace('.00', '')}.
-                  </Text>
-                  <Text style={styles.p2ConditionsItem}>
-                    • Inicial: {formatMoney(initialPayment, currency).replace('.00', '')} en 15 días.
-                  </Text>
-                  <Text style={styles.p2ConditionsItem}>
-                    • Saldo: {formatMoney(balance, currency).replace('.00', '')} financiado en cuotas directas sin bancos.
-                  </Text>
+                  
+                  {row.isInvestment && (
+                    <Text style={[styles.profTdProd, { width: '85%', color: '#64748B', fontStyle: 'italic' }]}>
+                      {row.label}
+                    </Text>
+                  )}
+                  
+                  {!row.isInvestment && <Text style={styles.profTdProd}>{row.production}</Text>}
+                  {!row.isInvestment && <Text style={styles.profTdNum}>{formatMoney(row.revenue, currency)}</Text>}
+                  {!row.isInvestment && <Text style={styles.profTdNum}>{formatMoney(row.costs, currency)}</Text>}
+                  {!row.isInvestment && <Text style={styles.profTdProfit}>{formatMoney(row.profit, currency)}</Text>}
                 </View>
-              ) : (
-                <View>
-                  <Text style={styles.p2ConditionsItem}>
-                    • Modalidad: Pago al Contado ({formatMoney(totalAmount, currency).replace('.00', '')}).
-                  </Text>
-                  <Text style={styles.p2ConditionsItem}>
-                    • Separación: {formatMoney(reservation, currency).replace('.00', '')}.
-                  </Text>
-                  <Text style={styles.p2ConditionsItem}>
-                    • Saldo al Contado: {formatMoney(Math.max(0, totalAmount - reservation), currency).replace('.00', '')} contra firma de contrato y minuta en notaría.
-                  </Text>
-                </View>
-              )}
+              ))}
+
+              {/* Fila de Total */}
+              <View style={[styles.profRow, styles.profRowTotal]}>
+                <Text style={[styles.profTdYear, { color: '#166534' }]}>TOTAL ({profData.totalYears} años)</Text>
+                <Text style={styles.profTdProd}>--</Text>
+                <Text style={[styles.profTdNum, { color: '#166534', fontFamily: 'Helvetica-Bold' }]}>{formatMoney(profData.totalRevenue, currency)}</Text>
+                <Text style={styles.profTdNum}>--</Text>
+                <Text style={[styles.profTdProfit, { fontSize: 8 }]}>{formatMoney(profData.totalProfit, currency)}</Text>
+              </View>
             </View>
 
             {/* Cuadro de Beneficios Agronómicos y Legales */}
-            <View style={styles.amenitiesContainer}>
+            <View style={[styles.amenitiesContainer, { marginTop: 8 }]}>
               <Text style={styles.amenitiesTitle}>Especificaciones Agronómicas y Garantías Legales:</Text>
               <View style={styles.amenitiesGrid}>
                 {(property?.amenities || [
@@ -763,9 +845,11 @@ export default function ExecutivePDFDocument({ proforma = {}, property = {} }) {
                   "Factibilidad de energía eléctrica y servicios",
                   "Alta plusvalía garantizada por corredor agroindustrial",
                   "Suelo agrícola de primera calidad y clima óptimo"
-                ]).map((item, idx) => (
+                ])
+                .filter(item => !item.toLowerCase().includes('financiado') && !item.toLowerCase().includes('contado'))
+                .map((item, idx) => (
                   <Text key={idx} style={styles.amenityBadge}>
-                    • {item}
+                    • {item.replace(/Palta Hass/gi, cropName)}
                   </Text>
                 ))}
               </View>

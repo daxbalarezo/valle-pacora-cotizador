@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import Sidebar from '../components/layout/Sidebar';
 import { 
   PORTFOLIO_DOCUMENTS, 
   PORTFOLIO_TREE, 
@@ -23,18 +22,53 @@ import {
   ChevronRight,
   ArrowLeft,
   LayoutGrid,
-  ListFilter
+  ListFilter,
+  RefreshCw
 } from 'lucide-react';
 
-export default function Documents({ onNavigateTab, onNewProforma }) {
+export default function Documents() {
   const [viewMode, setViewMode] = useState('explorer'); // 'explorer' | 'list'
-  const [folderHistory, setFolderHistory] = useState([PORTFOLIO_TREE]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [copiedId, setCopiedId] = useState(null);
 
+  // Estados dinámicos para Drive
+  const [treeData, setTreeData] = useState(PORTFOLIO_TREE);
+  const [flatDocs, setFlatDocs] = useState(PORTFOLIO_DOCUMENTS);
+  const [folderHistory, setFolderHistory] = useState([PORTFOLIO_TREE]);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  React.useEffect(() => {
+    setFolderHistory([treeData]);
+  }, [treeData]);
+
   // Carpeta activa en el explorador
   const currentFolder = folderHistory[folderHistory.length - 1];
+
+  const handleSyncDrive = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/drive/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderId: '1E3koeQNsLpswrBszFJFzgXChF9-hTvDY' })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setTreeData(data.data.tree);
+        setFlatDocs(data.data.documents);
+        alert('Sincronización exitosa con Google Drive.');
+      } else {
+        alert('Error: ' + data.message);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error de conexión con el servidor local para la sincronización.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Navegación en el explorador
   const handleEnterFolder = (folder) => {
@@ -53,7 +87,7 @@ export default function Documents({ onNavigateTab, onNewProforma }) {
 
   // Filtrado reactivo para la vista de lista / buscador global
   const filteredDocuments = useMemo(() => {
-    return PORTFOLIO_DOCUMENTS.filter(doc => {
+    return flatDocs.filter(doc => {
       if (selectedCategory !== 'all' && doc.category !== selectedCategory) {
         return false;
       }
@@ -108,17 +142,8 @@ export default function Documents({ onNavigateTab, onNewProforma }) {
   const currentFiles = (currentFolder?.children || []).filter(c => !c.isFolder);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col md:flex-row">
-      {/* Sidebar de navegación */}
-      <Sidebar 
-        currentTab="documentos" 
-        onSelectTab={onNavigateTab}
-        onNewProforma={onNewProforma}
-      />
-
-      {/* Contenedor Principal */}
-      <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
-        {/* Cabecera Principal */}
+    <div className="w-full">
+      {/* Cabecera Principal */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -138,7 +163,20 @@ export default function Documents({ onNavigateTab, onNewProforma }) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+            {/* Botón Sincronizar con Drive */}
+            <button
+              onClick={handleSyncDrive}
+              disabled={isSyncing}
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white shadow-sm transition-all ${
+                isSyncing ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#4285F4] hover:bg-[#3367D6] active:scale-[0.98]'
+              }`}
+              title="Sincronizar carpetas y archivos con Google Drive"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar Drive'}</span>
+            </button>
+
             {/* Toggle de vistas */}
             <div className="flex items-center bg-white border border-slate-200 p-1 rounded-xl shadow-xs">
               <button
@@ -390,7 +428,6 @@ export default function Documents({ onNavigateTab, onNewProforma }) {
             )}
           </div>
         )}
-      </main>
     </div>
   );
 }

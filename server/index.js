@@ -8,6 +8,7 @@ import templatesRoutes from './routes/templates.routes.js';
 import propertiesRoutes from './routes/properties.routes.js';
 import configRoutes from './routes/config.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import driveRoutes from './routes/drive.routes.js';
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use('/api/templates', templatesRoutes);
 app.use('/api/properties', propertiesRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/drive', driveRoutes);
 
 // Manejo de rutas no encontradas
 app.use((req, res) => {

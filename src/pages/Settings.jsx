@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Sidebar from '../components/layout/Sidebar';
 import { 
   Building2, 
   CreditCard, 
@@ -22,15 +21,13 @@ import {
 } from 'lucide-react';
 import { formatCurrency, normalizeName, liveCapitalizeName, formatPhoneNumber } from '../utils/formatters';
 import { storageService, DEFAULT_CONFIG } from '../services/storageService';
+import { useGlobalContext } from '../context/GlobalContext';
 
-export default function Settings({
-  config,
-  advisors = [],
-  onRefreshAdvisors,
-  onSaveConfig,
-  onNavigateTab,
-  onNewProforma
-}) {
+export default function Settings() {
+  const { config, advisors = [], refreshData, handleSaveConfig } = useGlobalContext();
+  const onRefreshAdvisors = refreshData;
+  const onSaveConfig = handleSaveConfig;
+
   const [formData, setFormData] = useState(() => {
     const base = config || storageService.getConfigSync() || {};
     let advs = Array.isArray(advisors) && advisors.length > 0 ? advisors : (Array.isArray(base.advisors) ? base.advisors : []);
@@ -311,17 +308,8 @@ export default function Settings({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col md:flex-row">
-      {/* Sidebar Izquierdo */}
-      <Sidebar 
-        currentTab="configuracion" 
-        onSelectTab={onNavigateTab} 
-        onNewProforma={onNewProforma} 
-      />
-
-      {/* Contenido Principal */}
-      <main className="flex-1 p-4 sm:p-6 md:p-8 lg:p-10 overflow-y-auto w-full max-w-7xl mx-auto">
-        {/* Top Header Bar */}
+    <div className="w-full">
+      {/* Top Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-xl font-display font-bold text-slate-900 tracking-tight">
@@ -943,8 +931,7 @@ export default function Settings({
               </div>
             </div>
           )}
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
