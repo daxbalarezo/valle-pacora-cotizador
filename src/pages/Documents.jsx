@@ -26,6 +26,11 @@ import {
   RefreshCw
 } from 'lucide-react';
 
+// En desarrollo puede apuntar a una API externa; en Vercel usa la función
+// serverless publicada bajo el mismo dominio.
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+const DRIVE_SYNC_URL = `${API_BASE_URL}/drive/sync`;
+
 export default function Documents() {
   const [viewMode, setViewMode] = useState('explorer'); // 'explorer' | 'list'
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,23 +53,23 @@ export default function Documents() {
   const handleSyncDrive = async () => {
     setIsSyncing(true);
     try {
-      const response = await fetch('http://localhost:5000/api/drive/sync', {
+      const response = await fetch(DRIVE_SYNC_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ folderId: '1E3koeQNsLpswrBszFJFzgXChF9-hTvDY' })
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       
-      if (data.success) {
+      if (response.ok && data?.success) {
         setTreeData(data.data.tree);
         setFlatDocs(data.data.documents);
         alert('Sincronización exitosa con Google Drive.');
       } else {
-        alert('Error: ' + data.message);
+        alert('No se pudo sincronizar con Google Drive: ' + (data?.message || 'el servidor respondió con un error.'));
       }
     } catch (error) {
       console.error(error);
-      alert('Error de conexión con el servidor local para la sincronización.');
+      alert('No se pudo conectar con el servicio de sincronización. Inténtalo nuevamente.');
     } finally {
       setIsSyncing(false);
     }

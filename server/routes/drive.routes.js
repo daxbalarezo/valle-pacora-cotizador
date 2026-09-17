@@ -5,6 +5,47 @@ import path from 'path';
 
 const router = express.Router();
 
+function getGoogleAuth() {
+  const scopes = ['https://www.googleapis.com/auth/drive.readonly'];
+  const rawCredentials = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+
+  // Producción (Vercel): la credencial se guarda cifrada como variable de entorno.
+  if (rawCredentials) {
+    try {
+      const credentials = JSON.parse(rawCredentials);
+      if (credentials.private_key) {
+        credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+      }
+      return new google.auth.GoogleAuth({ credentials, scopes });
+    } catch {
+      const error = new Error('GOOGLE_SERVICE_ACCOUNT_JSON no contiene un JSON de cuenta de servicio válido.');
+      error.statusCode = 500;
+      throw error;
+    }
+  }
+
+  // Alternativa útil cuando el proveedor no acepta JSON multilínea como variable.
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) {
+    return new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n')
+      },
+      scopes
+    });
+  }
+
+  // Solo para desarrollo local; este archivo está ignorado por Git y no llega a Vercel.
+  const credsPath = path.join(process.cwd(), 'server', 'credentials.json');
+  if (fs.existsSync(credsPath)) {
+    return new google.auth.GoogleAuth({ keyFile: credsPath, scopes });
+  }
+
+  const error = new Error('Faltan las credenciales de Google Drive. Configura GOOGLE_SERVICE_ACCOUNT_JSON en Vercel.');
+  error.statusCode = 500;
+  throw error;
+}
+
 // Ruta para sincronizar con Google Drive
 router.post('/sync', async (req, res) => {
   try {
@@ -13,19 +54,8 @@ router.post('/sync', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Falta folderId' });
     }
 
-    const credsPath = path.join(process.cwd(), 'server', 'credentials.json');
-    if (!fs.existsSync(credsPath)) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'No se encontró credentials.json en la carpeta server. Por favor, asegúrate de haberlo descargado de Google Cloud.' 
-      });
-    }
-
     // Autenticación con Google Drive
-    const auth = new google.auth.GoogleAuth({
-      keyFile: credsPath,
-      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-    });
+    const auth = getGoogleAuth();
 
     const drive = google.drive({ version: 'v3', auth });
 
@@ -65,6 +95,7 @@ router.post('/sync', async (req, res) => {
             type: ext,
             category: category,
             url: file.webViewLink,
+            viewUrl: file.webViewLink,
             size: file.size ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'Desconocido',
             updatedAt: file.createdTime?.split('T')[0] || new Date().toISOString().split('T')[0],
             isFolder: false,
@@ -92,7 +123,7 @@ router.post('/sync', async (req, res) => {
 
   } catch (error) {
     console.error('Error al sincronizar con Drive:', error);
-    res.status(500).json({ success: false, message: error.message || 'Error de sincronización con Google Drive' });
+    res.status(error.statusCode || 500).json({ success: false, message: error.message || 'Error de sincronización con Google Drive' });
   }
 });
 
