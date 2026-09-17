@@ -52,8 +52,9 @@ export default function Dashboard() {
     };
   }, [proformas]);
 
-  const onEditProforma = (proformaId) => {
-    const target = proformas.find(p => p.id === proformaId || p.code === proformaId);
+  const onEditProforma = (proformaOrId) => {
+    const id = typeof proformaOrId === 'object' ? proformaOrId.id : proformaOrId;
+    const target = proformas.find(p => p.id === id || p.code === id);
     if (target) {
       setSelectedProforma(target);
       navigate('/crear');
