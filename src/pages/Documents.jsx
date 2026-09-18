@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   PORTFOLIO_DOCUMENTS, 
   PORTFOLIO_TREE, 
@@ -25,6 +25,8 @@ import {
   ListFilter,
   RefreshCw
 } from 'lucide-react';
+import { db, isFirebaseConfigured } from '../lib/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 // En desarrollo puede apuntar a una API externa; en Vercel usa la función
 // serverless publicada bajo el mismo dominio.
@@ -49,10 +51,34 @@ export default function Documents() {
   });
   const [folderHistory, setFolderHistory] = useState([treeData]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLoadingFirebase, setIsLoadingFirebase] = useState(true);
 
   React.useEffect(() => {
     setFolderHistory([treeData]);
   }, [treeData]);
+
+  React.useEffect(() => {
+    async function loadFromFirebase() {
+      if (isFirebaseConfigured && db) {
+        try {
+          const snap = await getDoc(doc(db, 'config', 'driveSync'));
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.treeData && data.flatDocs) {
+              setTreeData(data.treeData);
+              setFlatDocs(data.flatDocs);
+              localStorage.setItem('driveTreeData', JSON.stringify(data.treeData));
+              localStorage.setItem('driveFlatDocs', JSON.stringify(data.flatDocs));
+            }
+          }
+        } catch (err) {
+          console.warn('[Firebase] Error al cargar driveSync:', err);
+        }
+      }
+      setIsLoadingFirebase(false);
+    }
+    loadFromFirebase();
+  }, []);
 
   // Carpeta activa en el explorador
   const currentFolder = folderHistory[folderHistory.length - 1];
@@ -72,6 +98,20 @@ export default function Documents() {
         setFlatDocs(data.data.documents);
         localStorage.setItem('driveTreeData', JSON.stringify(data.data.tree));
         localStorage.setItem('driveFlatDocs', JSON.stringify(data.data.documents));
+
+        if (isFirebaseConfigured && db) {
+          try {
+            await setDoc(doc(db, 'config', 'driveSync'), {
+              treeData: data.data.tree,
+              flatDocs: data.data.documents,
+              updatedAt: new Date().toISOString()
+            });
+            console.log('[Firebase] Drive sync guardado globalmente.');
+          } catch (err) {
+            console.warn('[Firebase] No se pudo guardar en Firestore:', err);
+          }
+        }
+
         alert('Sincronización exitosa con Google Drive.');
       } else {
         alert('No se pudo sincronizar con Google Drive: ' + (data?.message || 'el servidor respondió con un error.'));
