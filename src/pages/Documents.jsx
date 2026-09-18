@@ -31,6 +31,7 @@ import {
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 const DRIVE_SYNC_URL = `${API_BASE_URL}/drive/sync`;
 
+
 export default function Documents() {
   const [viewMode, setViewMode] = useState('explorer'); // 'explorer' | 'list'
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,9 +39,15 @@ export default function Documents() {
   const [copiedId, setCopiedId] = useState(null);
 
   // Estados dinámicos para Drive
-  const [treeData, setTreeData] = useState(PORTFOLIO_TREE);
-  const [flatDocs, setFlatDocs] = useState(PORTFOLIO_DOCUMENTS);
-  const [folderHistory, setFolderHistory] = useState([PORTFOLIO_TREE]);
+  const [treeData, setTreeData] = useState(() => {
+    const saved = localStorage.getItem('driveTreeData');
+    return saved ? JSON.parse(saved) : PORTFOLIO_TREE;
+  });
+  const [flatDocs, setFlatDocs] = useState(() => {
+    const saved = localStorage.getItem('driveFlatDocs');
+    return saved ? JSON.parse(saved) : PORTFOLIO_DOCUMENTS;
+  });
+  const [folderHistory, setFolderHistory] = useState([treeData]);
   const [isSyncing, setIsSyncing] = useState(false);
 
   React.useEffect(() => {
@@ -63,6 +70,8 @@ export default function Documents() {
       if (response.ok && data?.success) {
         setTreeData(data.data.tree);
         setFlatDocs(data.data.documents);
+        localStorage.setItem('driveTreeData', JSON.stringify(data.data.tree));
+        localStorage.setItem('driveFlatDocs', JSON.stringify(data.data.documents));
         alert('Sincronización exitosa con Google Drive.');
       } else {
         alert('No se pudo sincronizar con Google Drive: ' + (data?.message || 'el servidor respondió con un error.'));
