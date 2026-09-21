@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import ProformaTable from '../components/proforma/ProformaTable';
 import ShareModal from '../components/proforma/ShareModal';
-import { Bell, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 import { useGlobalContext } from '../context/GlobalContext';
 import { downloadProformaPdf } from '../utils/pdfGenerator';
 import { useNavigate } from 'react-router-dom';
+import NotificationCenter from '../components/notifications/NotificationCenter';
+import NotificationPopup from '../components/notifications/NotificationPopup';
 
 export default function Dashboard() {
   const { 
@@ -82,15 +84,12 @@ export default function Dashboard() {
           </div>
 
           {/* Campana de Notificaciones idéntica al mockup */}
-          <button 
-            type="button" 
-            className="w-10 h-10 rounded-xl sm:rounded-full bg-[#FFFBEB] hover:bg-amber-100 text-[#D97706] flex items-center justify-center border border-amber-200/50 shadow-none transition-colors shrink-0"
-            title="Notificaciones"
-          >
-            <Bell className="w-4 h-4 fill-amber-500 stroke-amber-600" />
-          </button>
+          <NotificationCenter />
         </div>
       </div>
+
+      {/* Popup de Notificaciones al iniciar (si aplica) */}
+      <NotificationPopup />
 
       {/* 3 Tarjetas de Métricas Superiores */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">

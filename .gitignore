@@ -36,3 +36,4 @@ dist-ssr
 
 # Google Drive API Credentials
 server/credentials.json
+.env*
