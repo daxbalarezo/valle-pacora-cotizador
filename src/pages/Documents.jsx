@@ -148,9 +148,9 @@ export default function Documents() {
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchName = doc.name.toLowerCase().includes(q);
-        const matchSub = doc.subCategory.toLowerCase().includes(q);
-        const matchPath = doc.path.toLowerCase().includes(q);
+        const matchName = doc.name?.toLowerCase()?.includes(q) ?? false;
+        const matchSub = doc.subCategory?.toLowerCase()?.includes(q) ?? false;
+        const matchPath = doc.path?.toLowerCase()?.includes(q) ?? false;
         if (!matchName && !matchSub && !matchPath) return false;
       }
 
@@ -176,7 +176,7 @@ export default function Documents() {
 
   // Icono según tipo de documento
   const getFileIcon = (doc) => {
-    if (doc.category === '6.PLANOS' || doc.name.toLowerCase().includes('plano')) {
+    if (doc.category === '6.PLANOS' || doc.name?.toLowerCase().includes('plano')) {
       return <Map className="w-5 h-5 text-indigo-600" />;
     }
     if (doc.category?.includes('PROVEEDORES') || doc.path?.includes('PROVEEDORES')) {
@@ -185,7 +185,7 @@ export default function Documents() {
     if (doc.category?.includes('ROBLE') || doc.category?.includes('CAMPO ITAL') || doc.path?.includes('ROBLE')) {
       return <Building2 className="w-5 h-5 text-blue-600" />;
     }
-    if (doc.name.toLowerCase().includes('copia literal') || doc.name.toLowerCase().includes('minuta') || doc.name.toLowerCase().includes('posesion')) {
+    if (doc.name?.toLowerCase().includes('copia literal') || doc.name?.toLowerCase().includes('minuta') || doc.name?.toLowerCase().includes('posesion')) {
       return <ShieldCheck className="w-5 h-5 text-amber-600" />;
     }
     return <FileText className="w-5 h-5 text-rose-600" />;
@@ -565,3 +565,5 @@ function DocumentCard({ doc, isCopied, onCopy, onShare, getFileIcon }) {
     </div>
   );
 }
+
+
